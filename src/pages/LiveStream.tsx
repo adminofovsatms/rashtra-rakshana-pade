@@ -53,6 +53,8 @@ const LiveStream = () => {
       }
 
       // Create stream record
+      // Note: Selecting all columns here is safe because the user is the stream owner
+      // and RLS policy allows owners to see their own stream_key
       const { data: streamData, error } = await supabase
         .from("live_streams")
         .insert({
@@ -63,7 +65,7 @@ const LiveStream = () => {
           is_live: true,
           started_at: new Date().toISOString()
         })
-        .select()
+        .select('id, user_id, title, description, is_live, started_at, stream_key')
         .single();
 
       if (error) throw error;
