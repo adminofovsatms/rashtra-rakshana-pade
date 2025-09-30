@@ -358,7 +358,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      live_streams_public: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          ended_at: string | null
+          id: string | null
+          is_live: boolean | null
+          started_at: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          ended_at?: string | null
+          id?: string | null
+          is_live?: boolean | null
+          started_at?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          ended_at?: string | null
+          id?: string | null
+          is_live?: boolean | null
+          started_at?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
