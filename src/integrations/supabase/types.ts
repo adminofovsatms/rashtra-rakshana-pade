@@ -358,9 +358,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      poll_vote_counts: {
+        Row: {
+          poll_option_id: string | null
+          vote_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_poll_option_id_fkey"
+            columns: ["poll_option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      get_user_poll_vote: {
+        Args: { _post_id: string; _user_id: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["user_role"]

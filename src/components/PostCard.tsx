@@ -61,25 +61,37 @@ const PostCard = ({ post, currentUserId }: PostCardProps) => {
   };
 
   const fetchPollData = async () => {
+    // Fetch poll options
     const { data: options } = await supabase
       .from("poll_options")
-      .select(`
-        *,
-        poll_votes (count)
-      `)
+      .select("*")
       .eq("post_id", post.id);
 
     if (options) {
-      setPollOptions(options);
+      // Fetch aggregated vote counts from the secure view
+      const { data: voteCounts } = await supabase
+        .from("poll_vote_counts")
+        .select("*")
+        .in("poll_option_id", options.map(o => o.id));
 
-      const { data: vote } = await supabase
+      // Merge vote counts with options
+      const optionsWithVotes = options.map(option => ({
+        ...option,
+        poll_votes: [{ 
+          count: voteCounts?.find(vc => vc.poll_option_id === option.id)?.vote_count || 0 
+        }]
+      }));
+
+      setPollOptions(optionsWithVotes);
+
+      // Check if current user has voted (RLS now only allows users to see their own votes)
+      const { data: userVotes } = await supabase
         .from("poll_votes")
         .select("poll_option_id")
         .eq("user_id", currentUserId)
-        .in("poll_option_id", options.map(o => o.id))
-        .single();
+        .in("poll_option_id", options.map(o => o.id));
 
-      setUserVote(vote?.poll_option_id || null);
+      setUserVote(userVotes?.[0]?.poll_option_id || null);
     }
   };
 
