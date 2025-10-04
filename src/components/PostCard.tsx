@@ -175,7 +175,7 @@ const PostCard = ({ post, currentUserId }: PostCardProps) => {
         <img
           src={post.media_url}
           alt="Post content"
-          className="rounded-lg mb-4 w-full object-cover max-h-96"
+          className="rounded-lg mb-4 w-full h-auto object-contain max-h-[1000px]"
         />
       )}
 
