@@ -450,10 +450,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_user_poll_vote: {
-        Args: { _post_id: string; _user_id: string }
-        Returns: string
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["user_role"]
