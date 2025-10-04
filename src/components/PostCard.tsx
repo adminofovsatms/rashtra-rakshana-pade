@@ -183,7 +183,7 @@ const PostCard = ({ post, currentUserId }: PostCardProps) => {
         <video
           src={post.media_url}
           controls
-          className="rounded-lg mb-4 w-full max-h-96"
+          className="rounded-lg mb-4 w-full h-auto object-contain max-h-[1000px]"
         />
       )}
 
