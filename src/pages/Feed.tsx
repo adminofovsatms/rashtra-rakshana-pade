@@ -78,8 +78,22 @@ const Feed = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+    try {
+      await supabase.auth.signOut();
+      setSession(null);
+      setUserRole(null);
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out"
+      });
+      navigate("/feed");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   if (loading) {
