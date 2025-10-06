@@ -118,9 +118,15 @@ const Feed = () => {
                 Dashboard
               </Button>
             )}
-            <Button onClick={handleLogout} variant="ghost" size="icon">
-              <LogOut className="h-5 w-5" />
-            </Button>
+            {session ? (
+              <Button onClick={handleLogout} variant="ghost" size="icon">
+                <LogOut className="h-5 w-5" />
+              </Button>
+            ) : (
+              <Button onClick={() => navigate("/auth")} variant="default">
+                Login
+              </Button>
+            )}
           </div>
         </div>
       </header>
