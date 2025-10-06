@@ -18,10 +18,10 @@ const Feed = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (!session) {
-        navigate("/auth");
-      } else {
+      if (session) {
         fetchUserProfile(session.user.id);
+      } else {
+        setLoading(false);
       }
     });
 
@@ -29,9 +29,7 @@ const Feed = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (!session) {
-        navigate("/auth");
-      } else {
+      if (session) {
         fetchUserProfile(session.user.id);
       }
     });
@@ -129,8 +127,15 @@ const Feed = () => {
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="space-y-6">
-          <CreatePost userId={session?.user.id || ""} />
-          <PostFeed userId={session?.user.id || ""} />
+          {session ? (
+            <CreatePost userId={session.user.id} />
+          ) : (
+            <div className="bg-card p-6 rounded-lg border text-center">
+              <p className="text-muted-foreground mb-4">Sign in to create posts and interact with the community</p>
+              <Button onClick={() => navigate("/auth")}>Sign In</Button>
+            </div>
+          )}
+          <PostFeed userId={session?.user.id} />
         </div>
       </main>
     </div>

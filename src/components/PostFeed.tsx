@@ -16,7 +16,7 @@ interface Post {
 }
 
 interface PostFeedProps {
-  userId: string;
+  userId?: string;
 }
 
 const PostFeed = ({ userId }: PostFeedProps) => {

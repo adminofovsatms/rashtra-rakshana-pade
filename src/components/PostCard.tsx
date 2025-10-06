@@ -20,7 +20,7 @@ interface PostCardProps {
       avatar_url: string | null;
     };
   };
-  currentUserId: string;
+  currentUserId?: string;
 }
 
 const PostCard = ({ post, currentUserId }: PostCardProps) => {
@@ -38,7 +38,7 @@ const PostCard = ({ post, currentUserId }: PostCardProps) => {
     if (post.post_type === "poll") {
       fetchPollData();
     }
-  }, [post.id]);
+  }, [post.id, currentUserId]);
 
   const fetchReactions = async () => {
     const { data } = await supabase
@@ -48,7 +48,7 @@ const PostCard = ({ post, currentUserId }: PostCardProps) => {
       .eq("reaction_type", "like");
 
     setLikeCount(data?.length || 0);
-    setLiked(data?.some((r) => r.user_id === currentUserId) || false);
+    setLiked(currentUserId ? data?.some((r) => r.user_id === currentUserId) || false : false);
   };
 
   const fetchCommentCount = async () => {
@@ -85,17 +85,24 @@ const PostCard = ({ post, currentUserId }: PostCardProps) => {
       setPollOptions(optionsWithVotes);
 
       // Check if current user has voted (RLS now only allows users to see their own votes)
-      const { data: userVotes } = await supabase
-        .from("poll_votes")
-        .select("poll_option_id")
-        .eq("user_id", currentUserId)
-        .in("poll_option_id", options.map(o => o.id));
+      if (currentUserId) {
+        const { data: userVotes } = await supabase
+          .from("poll_votes")
+          .select("poll_option_id")
+          .eq("user_id", currentUserId)
+          .in("poll_option_id", options.map(o => o.id));
 
-      setUserVote(userVotes?.[0]?.poll_option_id || null);
+        setUserVote(userVotes?.[0]?.poll_option_id || null);
+      }
     }
   };
 
   const handleLike = async () => {
+    if (!currentUserId) {
+      window.location.href = "/auth";
+      return;
+    }
+    
     if (liked) {
       await supabase
         .from("post_reactions")
@@ -116,6 +123,11 @@ const PostCard = ({ post, currentUserId }: PostCardProps) => {
   };
 
   const handleVote = async (optionId: string) => {
+    if (!currentUserId) {
+      window.location.href = "/auth";
+      return;
+    }
+    
     if (userVote) {
       toast({
         title: "Already voted",
@@ -238,18 +250,37 @@ const PostCard = ({ post, currentUserId }: PostCardProps) => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setShowComments(!showComments)}
+          onClick={() => {
+            if (!currentUserId) {
+              window.location.href = "/auth";
+              return;
+            }
+            setShowComments(!showComments);
+          }}
         >
           <MessageCircle className="h-4 w-4 mr-1" />
           {commentCount}
         </Button>
-        <Button variant="ghost" size="sm">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={() => {
+            if (!currentUserId) {
+              window.location.href = "/auth";
+              return;
+            }
+            toast({
+              title: "Share",
+              description: "Share functionality coming soon!"
+            });
+          }}
+        >
           <Share2 className="h-4 w-4 mr-1" />
           Share
         </Button>
       </div>
 
-      {showComments && (
+      {showComments && currentUserId && (
         <PostComments
           postId={post.id}
           currentUserId={currentUserId}
