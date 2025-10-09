@@ -5,6 +5,7 @@ import PostCard from "./PostCard";
 
 interface Post {
   id: string;
+  user_id: string;
   content: string | null;
   post_type: string;
   media_url: string | null;
@@ -94,7 +95,12 @@ const PostFeed = ({ userId }: PostFeedProps) => {
   return (
     <div className="space-y-4">
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} currentUserId={userId} />
+        <PostCard 
+          key={post.id} 
+          post={post} 
+          currentUserId={userId} 
+          onPostDeleted={fetchPosts}
+        />
       ))}
     </div>
   );

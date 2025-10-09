@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, MessageCircle, Share2, BarChart3 } from "lucide-react";
+import { Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import PostComments from "./PostComments";
 
 interface PostCardProps {
   post: {
     id: string;
+    user_id: string;
     content: string | null;
     post_type: string;
     media_url: string | null;
@@ -21,9 +22,10 @@ interface PostCardProps {
     };
   };
   currentUserId?: string;
+  onPostDeleted?: () => void;
 }
 
-const PostCard = ({ post, currentUserId }: PostCardProps) => {
+const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
@@ -161,6 +163,38 @@ const PostCard = ({ post, currentUserId }: PostCardProps) => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!currentUserId || currentUserId !== post.user_id) {
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete this post?")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("posts")
+        .delete()
+        .eq("id", post.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Post deleted",
+        description: "Your post has been successfully deleted"
+      });
+
+      onPostDeleted?.();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   const totalVotes = pollOptions.reduce((sum, opt) => sum + (opt.poll_votes?.[0]?.count || 0), 0);
 
   return (
@@ -177,6 +211,16 @@ const PostCard = ({ post, currentUserId }: PostCardProps) => {
             {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
           </p>
         </div>
+        {currentUserId === post.user_id && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDelete}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {post.content && (
