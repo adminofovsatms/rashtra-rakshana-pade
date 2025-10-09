@@ -21,9 +21,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Feed />} />
+          <Route path="/home" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/feed" element={<Feed />} />
           <Route path="/events" element={<Events />} />
           <Route path="/manage-users" element={<ManageUsers />} />
           <Route path="/admin" element={<SuperAdmin />} />
