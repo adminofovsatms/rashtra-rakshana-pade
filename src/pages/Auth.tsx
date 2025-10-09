@@ -69,7 +69,7 @@ const Auth = () => {
           description: "Successfully logged in"
         });
 
-        navigate("/feed");
+        navigate("/");
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -79,7 +79,7 @@ const Auth = () => {
               full_name: fullName,
               role: selectedRole
             },
-            emailRedirectTo: `${window.location.origin}/feed`
+            emailRedirectTo: `${window.location.origin}/`
           }
         });
 
