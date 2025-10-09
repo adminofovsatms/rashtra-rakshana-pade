@@ -15,7 +15,7 @@ const roleCards = [
     value: "member" as UserRole,
     icon: UserCircle,
     title: "Member",
-    description: "View posts, react, comment, and share content in the community"
+    description: "View posts, react, comment, and share content with Hindu Unity"
   },
   {
     value: "volunteer" as UserRole,
@@ -111,7 +111,7 @@ const Auth = () => {
         <div className="w-full max-w-5xl animate-fade-in">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Join Our Community
+              Join Hindu Unity
             </h1>
             <p className="text-muted-foreground text-lg">Select your role to get started</p>
           </div>

@@ -109,7 +109,7 @@ const Feed = () => {
       <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Community Feed
+            Hindu Unity
           </h1>
           <div className="flex items-center gap-4">
             {userRole && (
@@ -151,7 +151,7 @@ const Feed = () => {
             <CreatePost userId={session.user.id} />
           ) : (
             <div className="bg-card p-6 rounded-lg border text-center">
-              <p className="text-muted-foreground mb-4">Sign in to create posts and interact with the community</p>
+              <p className="text-muted-foreground mb-4">Sign in to create posts and interact with Hindu Unity</p>
               <Button onClick={() => navigate("/auth")}>Sign In</Button>
             </div>
           )}

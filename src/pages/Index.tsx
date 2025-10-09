@@ -27,7 +27,7 @@ const Index = () => {
             </div>
             <h3 className="text-xl font-semibold mb-3">Social Feed</h3>
             <p className="text-muted-foreground">
-              Share posts, images, videos, and polls. Engage with the community through likes, comments, and shares.
+              Share posts, images, videos, and polls. Engage with Hindu Unity through likes, comments, and shares.
             </p>
           </div>
 
@@ -37,7 +37,7 @@ const Index = () => {
             </div>
             <h3 className="text-xl font-semibold mb-3">Organize Events</h3>
             <p className="text-muted-foreground">
-              Volunteers can create and manage events and protests. Rally the community around important causes.
+              Volunteers can create and manage events and protests. Rally Hindu Unity around important causes.
             </p>
           </div>
 
@@ -45,7 +45,7 @@ const Index = () => {
             <div className="p-3 rounded-full bg-success/10 w-fit mb-4">
               <Shield className="h-8 w-8 text-success" />
             </div>
-            <h3 className="text-xl font-semibold mb-3">Community Management</h3>
+            <h3 className="text-xl font-semibold mb-3">Unity Management</h3>
             <p className="text-muted-foreground">
               Executives and admins ensure a safe, productive environment through moderation and oversight.
             </p>

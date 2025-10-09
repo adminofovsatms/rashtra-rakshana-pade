@@ -155,7 +155,7 @@ const CreatePost = ({ userId }: CreatePostProps) => {
 
       toast({
         title: "Post created!",
-        description: "Your post has been shared with the community"
+        description: "Your post has been shared with Hindu Unity"
       });
 
       setContent("");
