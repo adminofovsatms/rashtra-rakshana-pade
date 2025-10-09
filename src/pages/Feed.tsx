@@ -86,7 +86,7 @@ const Feed = () => {
         title: "Logged out",
         description: "You have been successfully logged out"
       });
-      navigate("/feed");
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Error",
