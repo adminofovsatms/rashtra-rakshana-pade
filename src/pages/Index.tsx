@@ -10,10 +10,10 @@ const Index = () => {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center max-w-4xl mx-auto mb-16 animate-fade-in">
           <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Community Platform
+            Hindu Unity
           </h1>
           <p className="text-xl text-muted-foreground mb-8">
-            Connect, organize, and make a difference together. Join our vibrant community of members, volunteers, and leaders.
+            Connect and unite all Hindus across the country. Raise all Hindus beyond caste and language
           </p>
           <Button onClick={() => navigate("/auth")} size="lg" className="text-lg px-8">
             Get Started
