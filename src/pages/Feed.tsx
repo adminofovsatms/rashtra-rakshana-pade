@@ -118,9 +118,14 @@ const Feed = () => {
               </span>
             )}
             {userRole === "volunteer" || userRole === "executive" || userRole === "super_admin" ? (
-              <Button onClick={() => navigate("/events")} variant="outline">
-                Events
-              </Button>
+              <>
+                <Button onClick={() => navigate("/events")} variant="outline">
+                  Events
+                </Button>
+                <Button onClick={() => navigate("/organise-protest")} variant="outline">
+                  Organise Protest
+                </Button>
+              </>
             ) : null}
             {userRole === "executive" || userRole === "super_admin" ? (
               <Button onClick={() => navigate("/manage-users")} variant="outline">

@@ -10,6 +10,7 @@ import Events from "./pages/Events";
 import ManageUsers from "./pages/ManageUsers";
 import SuperAdmin from "./pages/SuperAdmin";
 import LiveStream from "./pages/LiveStream";
+import OrganiseProtest from "./pages/OrganiseProtest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/manage-users" element={<ManageUsers />} />
           <Route path="/admin" element={<SuperAdmin />} />
           <Route path="/live-stream" element={<LiveStream />} />
+          <Route path="/organise-protest" element={<OrganiseProtest />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

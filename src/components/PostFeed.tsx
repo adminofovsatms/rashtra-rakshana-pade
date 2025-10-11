@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PostCard from "./PostCard";
+import { ProtestCard } from "./ProtestCard";
 
 interface Post {
   id: string;
@@ -16,19 +17,31 @@ interface Post {
   };
 }
 
+interface Protest {
+  id: string;
+  user_id: string;
+  reason: string;
+  location: string;
+  created_at: string;
+}
+
+type FeedItem = 
+  | { type: 'post'; data: Post }
+  | { type: 'protest'; data: Protest };
+
 interface PostFeedProps {
   userId?: string;
 }
 
 const PostFeed = ({ userId }: PostFeedProps) => {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchPosts();
+    fetchFeed();
 
-    const channel = supabase
+    const postsChannel = supabase
       .channel("posts-changes")
       .on(
         "postgres_changes",
@@ -38,19 +51,36 @@ const PostFeed = ({ userId }: PostFeedProps) => {
           table: "posts"
         },
         () => {
-          fetchPosts();
+          fetchFeed();
+        }
+      )
+      .subscribe();
+
+    const protestsChannel = supabase
+      .channel("protests-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "protests"
+        },
+        () => {
+          fetchFeed();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(postsChannel);
+      supabase.removeChannel(protestsChannel);
     };
   }, []);
 
-  const fetchPosts = async () => {
+  const fetchFeed = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch posts
+      const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select(`
           *,
@@ -61,11 +91,30 @@ const PostFeed = ({ userId }: PostFeedProps) => {
         `)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setPosts(data || []);
+      if (postsError) throw postsError;
+
+      // Fetch protests
+      const { data: protestsData, error: protestsError } = await supabase
+        .from("protests")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (protestsError) throw protestsError;
+
+      // Combine and sort by created_at
+      const combined: FeedItem[] = [
+        ...(postsData || []).map(post => ({ type: 'post' as const, data: post })),
+        ...(protestsData || []).map(protest => ({ type: 'protest' as const, data: protest }))
+      ];
+
+      combined.sort((a, b) => 
+        new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
+      );
+
+      setFeedItems(combined);
     } catch (error: any) {
       toast({
-        title: "Error loading posts",
+        title: "Error loading feed",
         description: error.message,
         variant: "destructive"
       });
@@ -84,7 +133,7 @@ const PostFeed = ({ userId }: PostFeedProps) => {
     );
   }
 
-  if (posts.length === 0) {
+  if (feedItems.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <p>No posts yet. Be the first to share something!</p>
@@ -94,13 +143,21 @@ const PostFeed = ({ userId }: PostFeedProps) => {
 
   return (
     <div className="space-y-4">
-      {posts.map((post) => (
-        <PostCard 
-          key={post.id} 
-          post={post} 
-          currentUserId={userId} 
-          onPostDeleted={fetchPosts}
-        />
+      {feedItems.map((item) => (
+        item.type === 'post' ? (
+          <PostCard 
+            key={`post-${item.data.id}`}
+            post={item.data} 
+            currentUserId={userId} 
+            onPostDeleted={fetchFeed}
+          />
+        ) : (
+          <ProtestCard
+            key={`protest-${item.data.id}`}
+            protest={item.data}
+            currentUserId={userId}
+          />
+        )
       ))}
     </div>
   );

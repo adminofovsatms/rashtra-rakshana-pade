@@ -398,6 +398,65 @@ export type Database = {
         }
         Relationships: []
       }
+      protest_responses: {
+        Row: {
+          created_at: string
+          id: string
+          protest_id: string
+          response_type: Database["public"]["Enums"]["protest_response_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          protest_id: string
+          response_type: Database["public"]["Enums"]["protest_response_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          protest_id?: string
+          response_type?: Database["public"]["Enums"]["protest_response_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protest_responses_protest_id_fkey"
+            columns: ["protest_id"]
+            isOneToOne: false
+            referencedRelation: "protests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protests: {
+        Row: {
+          created_at: string
+          id: string
+          location: string
+          reason: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location: string
+          reason: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location?: string
+          reason?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       poll_vote_counts: {
@@ -411,6 +470,24 @@ export type Database = {
             columns: ["poll_option_id"]
             isOneToOne: false
             referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protest_response_counts: {
+        Row: {
+          count: number | null
+          protest_id: string | null
+          response_type:
+            | Database["public"]["Enums"]["protest_response_type"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protest_responses_protest_id_fkey"
+            columns: ["protest_id"]
+            isOneToOne: false
+            referencedRelation: "protests"
             referencedColumns: ["id"]
           },
         ]
@@ -466,6 +543,7 @@ export type Database = {
       }
     }
     Enums: {
+      protest_response_type: "will_come" | "cant_come" | "not_needed"
       user_role: "super_admin" | "member" | "volunteer" | "executive"
     }
     CompositeTypes: {
@@ -594,6 +672,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      protest_response_type: ["will_come", "cant_come", "not_needed"],
       user_role: ["super_admin", "member", "volunteer", "executive"],
     },
   },
