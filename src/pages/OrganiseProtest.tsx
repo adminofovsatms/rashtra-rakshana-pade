@@ -7,12 +7,18 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Megaphone } from "lucide-react";
+import LocationPicker from "@/components/LocationPicker";
 
 const OrganiseProtest = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [reason, setReason] = useState("");
   const [location, setLocation] = useState("");
+  const [locationData, setLocationData] = useState<{
+    address: string;
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -59,6 +65,15 @@ const OrganiseProtest = () => {
       return;
     }
 
+    if (!locationData) {
+      toast({
+        title: "Location Required",
+        description: "Please select a location from the suggestions",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -68,6 +83,7 @@ const OrganiseProtest = () => {
         throw new Error("Not authenticated");
       }
 
+      // For now, only insert basic fields until database columns are added
       const { error } = await supabase
         .from("protests")
         .insert({
@@ -83,6 +99,9 @@ const OrganiseProtest = () => {
         description: "Your protest has been created successfully",
       });
 
+      setReason("");
+      setLocation("");
+      setLocationData(null);
       navigate("/");
     } catch (error) {
       console.error("Error creating protest:", error);
@@ -93,6 +112,19 @@ const OrganiseProtest = () => {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleLocationSelect = (location: { address: string; lat: number; lng: number }) => {
+    setLocationData(location);
+    setLocation(location.address);
+  };
+
+  const handleLocationChange = (newLocation: string) => {
+    setLocation(newLocation);
+    // Clear location data if user manually types something different
+    if (locationData && locationData.address !== newLocation) {
+      setLocationData(null);
     }
   };
 
@@ -144,12 +176,11 @@ const OrganiseProtest = () => {
               <label htmlFor="location" className="text-sm font-medium">
                 Protest Location
               </label>
-              <Input
-                id="location"
+              <LocationPicker
+                onLocationSelect={handleLocationSelect}
+                onChange={handleLocationChange}
                 placeholder="Enter the location for the protest"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                required
               />
             </div>
 

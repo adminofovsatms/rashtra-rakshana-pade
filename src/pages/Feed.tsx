@@ -112,20 +112,10 @@ const Feed = () => {
             Hindu Unity
           </h1>
           <div className="flex items-center gap-4">
-            {userRole && (
-              <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                {userRole}
-              </span>
-            )}
             {userRole === "volunteer" || userRole === "executive" || userRole === "super_admin" ? (
-              <>
-                <Button onClick={() => navigate("/events")} variant="outline">
-                  Events
-                </Button>
-                <Button onClick={() => navigate("/organise-protest")} variant="outline">
-                  Organise Protest
-                </Button>
-              </>
+              <Button onClick={() => navigate("/events")} variant="outline">
+                Events
+              </Button>
             ) : null}
             {userRole === "executive" || userRole === "super_admin" ? (
               <Button onClick={() => navigate("/manage-users")} variant="outline">
@@ -153,7 +143,7 @@ const Feed = () => {
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="space-y-6">
           {session ? (
-            <CreatePost userId={session.user.id} />
+            <CreatePost userId={session.user.id} userRole={userRole} />
           ) : (
             <div className="bg-card p-6 rounded-lg border text-center">
               <p className="text-muted-foreground mb-4">Sign in to create posts and interact with Hindu Unity</p>

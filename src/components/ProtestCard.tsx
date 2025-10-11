@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Megaphone, MapPin, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import GoogleMapsLink from "@/components/GoogleMapsLink";
 
 interface ProtestCardProps {
   protest: {
@@ -13,6 +14,8 @@ interface ProtestCardProps {
     user_id: string;
     reason: string;
     location: string;
+    location_lat?: number;
+    location_lng?: number;
     created_at: string;
   };
   currentUserId: string | undefined;
@@ -28,6 +31,7 @@ export const ProtestCard = ({ protest, currentUserId }: ProtestCardProps) => {
   const { toast } = useToast();
   const [organizerProfile, setOrganizerProfile] = useState<any>(null);
   const [userResponse, setUserResponse] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [responseCounts, setResponseCounts] = useState<ResponseCounts>({
     will_come: 0,
     cant_come: 0,
@@ -38,6 +42,7 @@ export const ProtestCard = ({ protest, currentUserId }: ProtestCardProps) => {
   useEffect(() => {
     fetchOrganizerProfile();
     fetchUserResponse();
+    fetchUserRole();
     fetchResponseCounts();
   }, [protest.id, currentUserId]);
 
@@ -62,6 +67,18 @@ export const ProtestCard = ({ protest, currentUserId }: ProtestCardProps) => {
       .maybeSingle();
 
     setUserResponse(data?.response_type || null);
+  };
+
+  const fetchUserRole = async () => {
+    if (!currentUserId) return;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", currentUserId)
+      .single();
+
+    setUserRole(data?.role || null);
   };
 
   const fetchResponseCounts = async () => {
@@ -166,50 +183,61 @@ export const ProtestCard = ({ protest, currentUserId }: ProtestCardProps) => {
               <p className="text-sm">{protest.reason}</p>
             </div>
             
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4" />
-              <span>{protest.location}</span>
+            <div className="flex items-center gap-2 text-sm">
+              <GoogleMapsLink
+                address={protest.location}
+                lat={protest.location_lat || undefined}
+                lng={protest.location_lng || undefined}
+                className="text-muted-foreground hover:text-primary"
+              />
             </div>
           </div>
         </div>
       </div>
 
       {/* Response Buttons */}
-      <div className="flex gap-2 flex-wrap">
-        <Button
-          size="sm"
-          variant={userResponse === "will_come" ? "default" : "outline"}
-          onClick={() => handleResponse("will_come")}
-          disabled={isSubmitting}
-          className="flex-1"
-        >
-          <CheckCircle className="h-4 w-4 mr-1" />
-          I will come ({responseCounts.will_come})
-        </Button>
-        <Button
-          size="sm"
-          variant={userResponse === "cant_come" ? "default" : "outline"}
-          onClick={() => handleResponse("cant_come")}
-          disabled={isSubmitting}
-          className="flex-1"
-        >
-          <XCircle className="h-4 w-4 mr-1" />
-          I can't come ({responseCounts.cant_come})
-        </Button>
-        <Button
-          size="sm"
-          variant={userResponse === "not_needed" ? "default" : "outline"}
-          onClick={() => handleResponse("not_needed")}
-          disabled={isSubmitting}
-          className="flex-1"
-        >
-          <AlertCircle className="h-4 w-4 mr-1" />
-          Not needed ({responseCounts.not_needed})
-        </Button>
-      </div>
+      {userRole === "member" && userResponse ? (
+        <div className="flex items-center justify-center p-4 bg-green-50 border border-green-200 rounded-lg">
+          <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+          <span className="text-green-700 font-medium">You opted to visit the protest</span>
+        </div>
+      ) : (
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant={userResponse === "will_come" ? "default" : "outline"}
+            onClick={() => handleResponse("will_come")}
+            disabled={isSubmitting || (userRole === "member" && userResponse !== null)}
+            className="flex-1"
+          >
+            <CheckCircle className="h-4 w-4 mr-1" />
+            I will come{userRole !== "member" && ` (${responseCounts.will_come})`}
+          </Button>
+          <Button
+            size="sm"
+            variant={userResponse === "cant_come" ? "default" : "outline"}
+            onClick={() => handleResponse("cant_come")}
+            disabled={isSubmitting || (userRole === "member" && userResponse !== null)}
+            className="flex-1"
+          >
+            <XCircle className="h-4 w-4 mr-1" />
+            I can't come{userRole !== "member" && ` (${responseCounts.cant_come})`}
+          </Button>
+          <Button
+            size="sm"
+            variant={userResponse === "not_needed" ? "default" : "outline"}
+            onClick={() => handleResponse("not_needed")}
+            disabled={isSubmitting || (userRole === "member" && userResponse !== null)}
+            className="flex-1"
+          >
+            <AlertCircle className="h-4 w-4 mr-1" />
+            Not needed{userRole !== "member" && ` (${responseCounts.not_needed})`}
+          </Button>
+        </div>
+      )}
 
-      {/* Results for Organizer */}
-      {isOrganizer && (
+      {/* Results for Protest Organizer (Volunteer who posted) */}
+      {isOrganizer && userRole && (userRole === "volunteer" || userRole === "executive" || userRole === "super_admin") && (
         <div className="pt-4 border-t">
           <p className="text-sm font-semibold mb-2">Total Responses: {responseCounts.will_come + responseCounts.cant_come + responseCounts.not_needed}</p>
           <div className="grid grid-cols-3 gap-2 text-xs">

@@ -5,15 +5,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Image, Video, BarChart3, Send, Upload, Radio } from "lucide-react";
+import { Image, Video, BarChart3, Send, Upload, Radio, Megaphone } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useNavigate } from "react-router-dom";
 
 interface CreatePostProps {
   userId: string;
+  userRole?: string | null;
 }
 
-const CreatePost = ({ userId }: CreatePostProps) => {
+const CreatePost = ({ userId, userRole }: CreatePostProps) => {
   const [content, setContent] = useState("");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState("");
@@ -24,6 +27,7 @@ const CreatePost = ({ userId }: CreatePostProps) => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -177,20 +181,84 @@ const CreatePost = ({ userId }: CreatePostProps) => {
   return (
     <Card className="p-6 animate-fade-in">
       <Tabs value={postType} onValueChange={(v) => setPostType(v as any)}>
-        <TabsList className="grid w-full grid-cols-5 mb-4">
-          <TabsTrigger value="text">Text</TabsTrigger>
-          <TabsTrigger value="image">
-            <Image className="h-4 w-4" />
-          </TabsTrigger>
-          <TabsTrigger value="video">
-            <Video className="h-4 w-4" />
-          </TabsTrigger>
-          <TabsTrigger value="poll">
-            <BarChart3 className="h-4 w-4" />
-          </TabsTrigger>
-          <TabsTrigger value="live">
-            <Radio className="h-4 w-4" />
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-6 mb-4">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="text">Text</TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Create Text Post</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="image">
+                  <Image className="h-4 w-4" />
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Create Image Post</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="video">
+                  <Video className="h-4 w-4" />
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Create Video Post</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="poll">
+                  <BarChart3 className="h-4 w-4" />
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Create Poll</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="live">
+                  <Radio className="h-4 w-4" />
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Start Live Stream</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {userRole && (userRole === "volunteer" || userRole === "executive" || userRole === "super_admin") && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/organise-protest")}
+                    className="h-10"
+                  >
+                    <Megaphone className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Organize Protest</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </TabsList>
 
         <TabsContent value="text" className="space-y-4">
