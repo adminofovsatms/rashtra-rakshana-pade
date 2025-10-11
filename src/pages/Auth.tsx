@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Users, Shield, Crown } from "lucide-react";
+import { UserCircle, Users, Shield, Crown, ArrowLeft } from "lucide-react";
 
 type UserRole = "member" | "volunteer" | "executive" | "super_admin";
 
@@ -107,8 +107,20 @@ const Auth = () => {
 
   if (!isLogin && !selectedRole) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5 flex items-center justify-center p-4">
-        <div className="w-full max-w-5xl animate-fade-in">
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
+        <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Hindu Unity
+            </h1>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </div>
+        </header>
+        
+        <div className="flex items-center justify-center p-4 min-h-[calc(100vh-73px)]">
+          <div className="w-full max-w-5xl animate-fade-in">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Join Hindu Unity
@@ -145,12 +157,25 @@ const Auth = () => {
             </Button>
           </div>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
+      <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Hindu Unity
+          </h1>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </div>
+      </header>
+      
+      <div className="flex items-center justify-center p-4 min-h-[calc(100vh-73px)]">
       <Card className="w-full max-w-md p-8 animate-scale-in">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">
@@ -225,6 +250,7 @@ const Auth = () => {
           </Button>
         </form>
       </Card>
+      </div>
     </div>
   );
 };
