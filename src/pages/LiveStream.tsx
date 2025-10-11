@@ -26,7 +26,7 @@ const LiveStream = () => {
 
   useEffect(() => {
     if (!userId) {
-      navigate("/feed");
+      navigate("/");
     }
   }, [userId, navigate]);
 
@@ -121,7 +121,7 @@ const LiveStream = () => {
         description: "Your live stream has been stopped"
       });
 
-      setTimeout(() => navigate("/feed"), 2000);
+      setTimeout(() => navigate("/"), 2000);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -139,7 +139,7 @@ const LiveStream = () => {
             <Radio className={isStreaming ? "animate-pulse text-destructive" : ""} />
             Live Stream
           </h1>
-          <Button variant="outline" onClick={() => navigate("/feed")}>
+          <Button variant="outline" onClick={() => navigate("/")}>
             <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
