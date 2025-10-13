@@ -83,13 +83,14 @@ const OrganiseProtest = () => {
         throw new Error("Not authenticated");
       }
 
-      // For now, only insert basic fields until database columns are added
       const { error } = await supabase
         .from("protests")
         .insert({
           user_id: user.id,
           reason: reason.trim(),
           location: location.trim(),
+          location_lat: locationData.lat,
+          location_lng: locationData.lng,
         });
 
       if (error) throw error;

@@ -8,7 +8,7 @@ if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === 'your_google_maps_api_key_he
 }
 
 export const MAPS_CONFIG = {
-  libraries: ['places', 'geometry'] as const,
+  libraries: ['places', 'geometry'] as ['places', 'geometry'],
   defaultCenter: { lat: 28.6139, lng: 77.2090 }, // New Delhi coordinates
   defaultZoom: 10,
   region: 'IN', // Restrict to India
