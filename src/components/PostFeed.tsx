@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PostCard from "./PostCard";
 import { ProtestCard } from "./ProtestCard";
+import { Loader2 } from "lucide-react";
 
 interface Post {
   id: string;
@@ -36,22 +37,29 @@ interface PostFeedProps {
 const PostFeed = ({ userId }: PostFeedProps) => {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+  const observerTarget = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  const ITEMS_PER_PAGE = 5;
+
   useEffect(() => {
-    fetchFeed();
+    fetchFeed(0, true);
 
     const postsChannel = supabase
       .channel("posts-changes")
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "posts"
         },
         () => {
-          fetchFeed();
+          // Reload from beginning when new posts are added
+          fetchFeed(0, true);
         }
       )
       .subscribe();
@@ -61,12 +69,13 @@ const PostFeed = ({ userId }: PostFeedProps) => {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "protests"
         },
         () => {
-          fetchFeed();
+          // Reload from beginning when new protests are added
+          fetchFeed(0, true);
         }
       )
       .subscribe();
@@ -77,9 +86,40 @@ const PostFeed = ({ userId }: PostFeedProps) => {
     };
   }, []);
 
-  const fetchFeed = async () => {
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, loadingMore, loading]);
+
+  const fetchFeed = async (pageNum: number, reset: boolean = false) => {
     try {
-      // Fetch posts
+      if (reset) {
+        setLoading(true);
+        setPage(0);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const from = pageNum * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      // Fetch posts with pagination
       const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select(`
@@ -89,15 +129,17 @@ const PostFeed = ({ userId }: PostFeedProps) => {
             avatar_url
           )
         `)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
       if (postsError) throw postsError;
 
-      // Fetch protests
+      // Fetch protests with pagination
       const { data: protestsData, error: protestsError } = await supabase
         .from("protests")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
       if (protestsError) throw protestsError;
 
@@ -111,7 +153,20 @@ const PostFeed = ({ userId }: PostFeedProps) => {
         new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
       );
 
-      setFeedItems(combined);
+      // Take only the items we need for this page
+      const pageItems = combined.slice(0, ITEMS_PER_PAGE);
+
+      if (reset) {
+        setFeedItems(pageItems);
+        setPage(1);
+      } else {
+        setFeedItems(prev => [...prev, ...pageItems]);
+        setPage(pageNum + 1);
+      }
+
+      // Check if there are more items to load
+      setHasMore(pageItems.length === ITEMS_PER_PAGE);
+
     } catch (error: any) {
       toast({
         title: "Error loading feed",
@@ -120,8 +175,15 @@ const PostFeed = ({ userId }: PostFeedProps) => {
       });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
+
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      fetchFeed(page);
+    }
+  }, [page, loadingMore, hasMore]);
 
   if (loading) {
     return (
@@ -149,7 +211,7 @@ const PostFeed = ({ userId }: PostFeedProps) => {
             key={`post-${item.data.id}`}
             post={item.data} 
             currentUserId={userId} 
-            onPostDeleted={fetchFeed}
+            onPostDeleted={() => fetchFeed(0, true)}
           />
         ) : (
           <ProtestCard
@@ -159,6 +221,21 @@ const PostFeed = ({ userId }: PostFeedProps) => {
           />
         )
       ))}
+      
+      {/* Infinite scroll trigger */}
+      <div ref={observerTarget} className="py-4">
+        {loadingMore && (
+          <div className="flex justify-center items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Loading more posts...</span>
+          </div>
+        )}
+        {!hasMore && feedItems.length > 0 && (
+          <div className="text-center text-muted-foreground py-4">
+            <p>You've reached the end of the feed</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
