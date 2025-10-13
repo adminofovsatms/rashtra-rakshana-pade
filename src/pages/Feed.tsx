@@ -118,13 +118,18 @@ const Feed = () => {
               </Button>
             ) : null}
             {userRole === "executive" || userRole === "super_admin" ? (
-              <Button onClick={() => navigate("/manage-users")} variant="outline">
-                Manage Users
-              </Button>
+              <>
+                <Button onClick={() => navigate("/executive-dashboard")} variant="outline">
+                  Dashboard
+                </Button>
+                <Button onClick={() => navigate("/manage-users")} variant="outline">
+                  Manage Users
+                </Button>
+              </>
             ) : null}
             {userRole === "super_admin" && (
               <Button onClick={() => navigate("/admin")} variant="outline">
-                Dashboard
+                Super Admin
               </Button>
             )}
             {session ? (
