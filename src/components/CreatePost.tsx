@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Image, Video, BarChart3, Send, Upload, Radio, Megaphone } from "lucide-react";
+import { Image, Video, BarChart3, Send, Upload, Radio, Megaphone, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -20,6 +20,7 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
   const [content, setContent] = useState("");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string>("");
   const [postType, setPostType] = useState<"text" | "image" | "video" | "poll" | "live">("text");
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [loading, setLoading] = useState(false);
@@ -28,6 +29,19 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Create preview URL when file is selected
+  useEffect(() => {
+    if (mediaFile) {
+      const objectUrl = URL.createObjectURL(mediaFile);
+      setPreviewUrl(objectUrl);
+      
+      // Cleanup: revoke the object URL when component unmounts or file changes
+      return () => URL.revokeObjectURL(objectUrl);
+    } else {
+      setPreviewUrl("");
+    }
+  }, [mediaFile]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -165,6 +179,7 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
       setContent("");
       setMediaFile(null);
       setMediaUrl("");
+      setPreviewUrl("");
       setPollOptions(["", ""]);
       setPostType("text");
     } catch (error: any) {
@@ -279,50 +294,64 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
             rows={3}
             className="resize-none"
           />
-          <div 
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              dragActive ? 'border-primary bg-primary/5' : 'border-border'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
-            {mediaFile ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">{mediaFile.name}</p>
+          {mediaFile && previewUrl ? (
+            <div className="space-y-3">
+              <div className="relative rounded-lg overflow-hidden border">
+                <img 
+                  src={previewUrl} 
+                  alt="Preview" 
+                  className="w-full h-auto max-h-96 object-contain bg-muted"
+                />
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
+                  variant="destructive"
+                  size="icon"
                   onClick={() => setMediaFile(null)}
+                  className="absolute top-2 right-2"
                 >
-                  Remove
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Drag and drop an image, or
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => imageInputRef.current?.click()}
-                >
-                  Select Image
-                </Button>
-              </>
-            )}
-          </div>
+              <p className="text-sm text-muted-foreground text-center">{mediaFile.name}</p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => imageInputRef.current?.click()}
+                className="w-full"
+              >
+                Change Image
+              </Button>
+            </div>
+          ) : (
+            <div 
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                dragActive ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-2">
+                Drag and drop an image, or
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => imageInputRef.current?.click()}
+              >
+                Select Image
+              </Button>
+            </div>
+          )}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
         </TabsContent>
 
         <TabsContent value="video" className="space-y-4">
@@ -333,50 +362,66 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
             rows={3}
             className="resize-none"
           />
-          <div 
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              dragActive ? 'border-primary bg-primary/5' : 'border-border'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
-            <input
-              ref={videoInputRef}
-              type="file"
-              accept="video/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <Video className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
-            {mediaFile ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">{mediaFile.name}</p>
+          {mediaFile && previewUrl ? (
+            <div className="space-y-3">
+              <div className="relative rounded-lg overflow-hidden border">
+                <video 
+                  src={previewUrl} 
+                  controls 
+                  className="w-full h-auto max-h-96 bg-muted"
+                >
+                  Your browser does not support the video tag.
+                </video>
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
+                  variant="destructive"
+                  size="icon"
                   onClick={() => setMediaFile(null)}
+                  className="absolute top-2 right-2"
                 >
-                  Remove
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Drag and drop a video, or
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => videoInputRef.current?.click()}
-                >
-                  Select Video
-                </Button>
-              </>
-            )}
-          </div>
+              <p className="text-sm text-muted-foreground text-center">{mediaFile.name}</p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => videoInputRef.current?.click()}
+                className="w-full"
+              >
+                Change Video
+              </Button>
+            </div>
+          ) : (
+            <div 
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                dragActive ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <Video className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-2">
+                Drag and drop a video, or
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => videoInputRef.current?.click()}
+              >
+                Select Video
+              </Button>
+            </div>
+          )}
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
         </TabsContent>
 
         <TabsContent value="poll" className="space-y-4">
