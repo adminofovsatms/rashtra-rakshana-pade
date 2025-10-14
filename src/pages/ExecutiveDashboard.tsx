@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useUserRole";
 import { 
   ArrowLeft, 
   Users, 
@@ -30,6 +31,8 @@ interface DashboardStats {
 const ExecutiveDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [session, setSession] = useState<any>(null);
+  const { isExecutive, isSuperAdmin, loading: roleLoading } = useUserRole(session?.user?.id);
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     liveUsers: 0,
@@ -42,59 +45,33 @@ const ExecutiveDashboard = () => {
     }
   });
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    checkAccess();
-  }, []);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+  }, [navigate]);
 
   useEffect(() => {
-    if (userRole === "executive" || userRole === "super_admin") {
+    if (!roleLoading && session) {
+      if (!isExecutive && !isSuperAdmin) {
+        toast({
+          title: "Access Denied",
+          description: "Only executives and super admins can view this dashboard",
+          variant: "destructive",
+        });
+        navigate("/");
+        return;
+      }
+      
       fetchDashboardStats();
-      
-      // Set up real-time updates
-      const interval = setInterval(fetchDashboardStats, 30000); // Refresh every 30 seconds
-      
+      const interval = setInterval(fetchDashboardStats, 30000);
       return () => clearInterval(interval);
     }
-  }, [userRole]);
-
-  const checkAccess = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, is_approved")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || (profile.role !== "executive" && profile.role !== "super_admin")) {
-      toast({
-        title: "Access Denied",
-        description: "Only executives and admins can view this dashboard",
-        variant: "destructive",
-      });
-      navigate("/");
-      return;
-    }
-
-    if (profile.role === "executive" && !profile.is_approved) {
-      toast({
-        title: "Pending Approval",
-        description: "Your executive account requires approval to access this dashboard",
-        variant: "destructive",
-      });
-      navigate("/");
-      return;
-    }
-
-    setUserRole(profile.role);
-  };
+  }, [isExecutive, isSuperAdmin, roleLoading, session]);
 
   const fetchDashboardStats = async () => {
     try {
@@ -154,7 +131,15 @@ const ExecutiveDashboard = () => {
     }
   };
 
-  if (!userRole) {
+  if (roleLoading || !session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!isExecutive && !isSuperAdmin) {
     return null;
   }
 
