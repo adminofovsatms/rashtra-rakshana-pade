@@ -26,13 +26,14 @@ const SuperAdmin = () => {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
+    // Check if user has super_admin role from user_roles table
+    const { data: roles } = await supabase
+      .from("user_roles")
       .select("role")
-      .eq("id", user.id)
-      .single();
+      .eq("user_id", user.id);
 
-    if (profile?.role !== "super_admin") {
+    const userRoles = roles?.map(r => r.role) || [];
+    if (!userRoles.includes("super_admin")) {
       navigate("/");
     }
   };

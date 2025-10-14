@@ -50,21 +50,21 @@ const ManageUsers = () => {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
+    // Check if user has super_admin role from user_roles table
+    const { data: roles } = await supabase
+      .from("user_roles")
       .select("role")
-      .eq("id", user.id)
-      .single();
+      .eq("user_id", user.id);
 
-    if (
-      profile?.role !== "executive" &&
-      profile?.role !== "super_admin"
-    ) {
+    const userRoles = roles?.map(r => r.role) || [];
+    const isSuperAdmin = userRoles.includes("super_admin");
+
+    if (!isSuperAdmin) {
       navigate("/");
       return;
     }
 
-    setCurrentUserRole(profile.role);
+    setCurrentUserRole("super_admin");
   };
 
   const fetchUsers = async () => {

@@ -7,13 +7,14 @@ import { LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CreatePost from "@/components/CreatePost";
 import PostFeed from "@/components/PostFeed";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const Feed = () => {
   const [session, setSession] = useState<Session | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isSuperAdmin, isExecutive, isVolunteer, loading: roleLoading } = useUserRole(session?.user.id);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,15 +58,13 @@ const Feed = () => {
         return;
       }
 
-      if (data.role === "executive" && !data.is_approved) {
+      if (!data.is_approved) {
         toast({
           title: "Pending Approval",
-          description: "Your executive account is awaiting admin approval",
+          description: "Your account is awaiting admin approval",
           variant: "default"
         });
       }
-
-      setUserRole(data.role);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -81,7 +80,6 @@ const Feed = () => {
     try {
       await supabase.auth.signOut();
       setSession(null);
-      setUserRole(null);
       toast({
         title: "Logged out",
         description: "You have been successfully logged out"
@@ -96,7 +94,7 @@ const Feed = () => {
     }
   };
 
-  if (loading) {
+  if (loading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p>Loading...</p>
@@ -112,25 +110,25 @@ const Feed = () => {
             Hindu Unity
           </h1>
           <div className="flex items-center gap-4">
-            {userRole === "volunteer" || userRole === "executive" || userRole === "super_admin" ? (
+            {(isVolunteer || isExecutive || isSuperAdmin) && (
               <Button onClick={() => navigate("/events")} variant="outline">
                 Events
               </Button>
-            ) : null}
-            {userRole === "executive" || userRole === "super_admin" ? (
+            )}
+            {isExecutive && (
+              <Button onClick={() => navigate("/executive-dashboard")} variant="outline">
+                Dashboard
+              </Button>
+            )}
+            {isSuperAdmin && (
               <>
-                <Button onClick={() => navigate("/executive-dashboard")} variant="outline">
-                  Dashboard
-                </Button>
                 <Button onClick={() => navigate("/manage-users")} variant="outline">
                   Manage Users
                 </Button>
+                <Button onClick={() => navigate("/admin")} variant="outline">
+                  Super Admin
+                </Button>
               </>
-            ) : null}
-            {userRole === "super_admin" && (
-              <Button onClick={() => navigate("/admin")} variant="outline">
-                Super Admin
-              </Button>
             )}
             {session ? (
               <Button onClick={handleLogout} variant="ghost" size="icon">
@@ -148,7 +146,7 @@ const Feed = () => {
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="space-y-6">
           {session ? (
-            <CreatePost userId={session.user.id} userRole={userRole} />
+            <CreatePost userId={session.user.id} userRole={isVolunteer || isExecutive || isSuperAdmin ? "volunteer" : "member"} />
           ) : (
             <div className="bg-card p-6 rounded-lg border text-center">
               <p className="text-muted-foreground mb-4">Sign in to create posts and interact with Hindu Unity</p>
