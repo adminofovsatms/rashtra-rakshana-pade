@@ -12,6 +12,7 @@ import SuperAdmin from "./pages/SuperAdmin";
 import LiveStream from "./pages/LiveStream";
 import OrganiseProtest from "./pages/OrganiseProtest";
 import ExecutiveDashboard from "./pages/ExecutiveDashboard";
+import ApproveExecutive from "./pages/ApproveExecutive";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/live-stream" element={<LiveStream />} />
           <Route path="/organise-protest" element={<OrganiseProtest />} />
           <Route path="/executive-dashboard" element={<ExecutiveDashboard />} />
+          <Route path="/approve-exec" element={<ApproveExecutive />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

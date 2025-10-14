@@ -113,6 +113,9 @@ const SuperAdmin = () => {
             <Button onClick={() => navigate("/events")} variant="outline" className="w-full">
               View All Events
             </Button>
+            <Button onClick={() => navigate("/approve-exec")} variant="outline" className="w-full">
+              Approve Executive Users
+            </Button>
             <p className="text-sm text-muted-foreground text-center">
               More analytics and features can be added here as needed
             </p>
