@@ -26,6 +26,7 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [location, setLocation] = useState<string>("");
+  const [locationLoading, setLocationLoading] = useState(true);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -34,38 +35,51 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
   // Get user's location when component mounts
   useEffect(() => {
     const getUserLocation = async () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            
-            // Use Google Maps Geocoding API to get city name
-            try {
-              const response = await fetch(
-                `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`
-              );
-              const data = await response.json();
-              
-              if (data.results && data.results.length > 0) {
-                // Extract city name from address components
-                const addressComponents = data.results[0].address_components;
-                const city = addressComponents.find((component: any) =>
-                  component.types.includes("locality")
-                )?.long_name;
-                
-                if (city) {
-                  setLocation(city);
-                }
-              }
-            } catch (error) {
-              console.error("Error fetching location:", error);
-            }
-          },
-          (error) => {
-            console.error("Geolocation error:", error);
-          }
-        );
+      if (!navigator.geolocation) {
+        setLocationLoading(false);
+        return;
       }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+          if (!apiKey || apiKey === 'your_google_maps_api_key_here') {
+            console.warn("Google Maps API key not configured");
+            setLocationLoading(false);
+            return;
+          }
+
+          // Use Google Maps Geocoding API to get city name
+          try {
+            const response = await fetch(
+              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`
+            );
+            const data = await response.json();
+            
+            if (data.results && data.results.length > 0) {
+              // Extract city name from address components
+              const addressComponents = data.results[0].address_components;
+              const city = addressComponents.find((component: any) =>
+                component.types.includes("locality")
+              )?.long_name;
+              
+              if (city) {
+                setLocation(city);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching location:", error);
+          } finally {
+            setLocationLoading(false);
+          }
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          setLocationLoading(false);
+        }
+      );
     };
 
     getUserLocation();
@@ -237,6 +251,17 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
 
   return (
     <Card className="p-6 animate-fade-in">
+      {locationLoading && (
+        <div className="mb-3 text-sm text-muted-foreground flex items-center gap-2">
+          <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          Detecting your location...
+        </div>
+      )}
+      {!locationLoading && location && (
+        <div className="mb-3 text-sm text-muted-foreground">
+          📍 Posting from: {location}
+        </div>
+      )}
       <Tabs value={postType} onValueChange={(v) => setPostType(v as any)}>
         <TabsList className="grid w-full grid-cols-6 mb-4">
           <TooltipProvider>
