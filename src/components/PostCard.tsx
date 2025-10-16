@@ -16,6 +16,7 @@ interface PostCardProps {
     post_type: string;
     media_url: string | null;
     created_at: string;
+    location?: string | null;
     profiles: {
       full_name: string | null;
       avatar_url: string | null;
@@ -209,6 +210,9 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
           <h3 className="font-semibold">{post.profiles.full_name || "Anonymous"}</h3>
           <p className="text-sm text-muted-foreground">
             {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+            {post.location && (
+              <span className="ml-2">• {post.location}</span>
+            )}
           </p>
         </div>
         {currentUserId === post.user_id && (

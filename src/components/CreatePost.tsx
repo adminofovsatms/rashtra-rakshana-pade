@@ -25,10 +25,51 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [location, setLocation] = useState<string>("");
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Get user's location when component mounts
+  useEffect(() => {
+    const getUserLocation = async () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            
+            // Use Google Maps Geocoding API to get city name
+            try {
+              const response = await fetch(
+                `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`
+              );
+              const data = await response.json();
+              
+              if (data.results && data.results.length > 0) {
+                // Extract city name from address components
+                const addressComponents = data.results[0].address_components;
+                const city = addressComponents.find((component: any) =>
+                  component.types.includes("locality")
+                )?.long_name;
+                
+                if (city) {
+                  setLocation(city);
+                }
+              }
+            } catch (error) {
+              console.error("Error fetching location:", error);
+            }
+          },
+          (error) => {
+            console.error("Geolocation error:", error);
+          }
+        );
+      }
+    };
+
+    getUserLocation();
+  }, []);
 
   // Create preview URL when file is selected
   useEffect(() => {
@@ -149,7 +190,8 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
           user_id: userId,
           content: content.trim() || null,
           post_type: postType,
-          media_url: uploadedUrl
+          media_url: uploadedUrl,
+          location: location || null
         })
         .select()
         .single();
