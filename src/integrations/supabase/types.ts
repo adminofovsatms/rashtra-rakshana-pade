@@ -435,6 +435,8 @@ export type Database = {
           created_at: string
           id: string
           location: string
+          location_lat: number | null
+          location_lng: number | null
           reason: string
           updated_at: string
           user_id: string
@@ -443,6 +445,8 @@ export type Database = {
           created_at?: string
           id?: string
           location: string
+          location_lat?: number | null
+          location_lng?: number | null
           reason: string
           updated_at?: string
           user_id: string
@@ -451,6 +455,8 @@ export type Database = {
           created_at?: string
           id?: string
           location?: string
+          location_lat?: number | null
+          location_lng?: number | null
           reason?: string
           updated_at?: string
           user_id?: string
