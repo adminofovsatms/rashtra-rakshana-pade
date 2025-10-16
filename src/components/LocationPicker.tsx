@@ -41,7 +41,19 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
     if (autocomplete !== null) {
       const place = autocomplete.getPlace();
       if (place.geometry && place.geometry.location) {
-        const address = place.formatted_address || place.name || '';
+        // Combine place name with formatted address if both are available
+        let address = '';
+        if (place.name && place.formatted_address) {
+          // Check if the formatted address already starts with the place name
+          if (place.formatted_address.startsWith(place.name)) {
+            address = place.formatted_address;
+          } else {
+            address = `${place.name}, ${place.formatted_address}`;
+          }
+        } else {
+          address = place.formatted_address || place.name || '';
+        }
+        
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
         
