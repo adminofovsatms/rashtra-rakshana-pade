@@ -199,43 +199,49 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
   const totalVotes = pollOptions.reduce((sum, opt) => sum + (opt.poll_votes?.[0]?.count || 0), 0);
 
   return (
-    <Card className="p-6 animate-slide-up hover:shadow-md transition-shadow">
-      <div className="flex items-start gap-4 mb-4">
-        <Avatar>
-          <AvatarFallback>
+    <Card className="px-3 animate-slide-up hover:shadow-md transition-shadow rounded-none">
+      <div className="flex items-start gap-3 pt-3">
+        <Avatar className="h-8 w-8">
+          <AvatarFallback className="text-xs">
             {post.profiles.full_name?.[0] || "U"}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <h3 className="font-semibold">{post.profiles.full_name || "Anonymous"}</h3>
-          <p className="text-sm text-muted-foreground">
-            {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+          <div className="flex items-center gap-1 text-sm">
+            <span className="font-semibold">{post.profiles.full_name || "Anonymous"}</span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-muted-foreground">
+              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+            </span>
             {post.location && (
-              <span className="ml-2">• {post.location}</span>
+              <>
+                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground">{post.location}</span>
+              </>
             )}
-          </p>
+          </div>
         </div>
         {currentUserId === post.user_id && (
           <Button
             variant="ghost"
             size="sm"
             onClick={handleDelete}
-            className="text-destructive hover:text-destructive"
+            className="text-destructive hover:text-destructive h-6 w-6 p-0"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3 w-3" />
           </Button>
         )}
       </div>
 
       {post.content && (
-        <p className="mb-4 whitespace-pre-wrap">{post.content}</p>
+        <p className="mb-2 pt-2 whitespace-pre-wrap text-sm leading-relaxed">{post.content}</p>
       )}
 
       {post.post_type === "image" && post.media_url && (
         <img
           src={post.media_url}
           alt="Post content"
-          className="rounded-lg mb-4 w-full h-auto object-contain max-h-[1000px]"
+          className="rounded-none mb-2 pt-2 w-full h-auto object-contain max-h-[600px]"
         />
       )}
 
@@ -243,12 +249,12 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
         <video
           src={post.media_url}
           controls
-          className="rounded-lg mb-4 w-full h-auto object-contain max-h-[1000px]"
+          className="rounded-none mb-2 pt-2 w-full h-auto object-contain max-h-[400px]"
         />
       )}
 
       {post.post_type === "poll" && pollOptions.length > 0 && (
-        <div className="space-y-2 mb-4">
+        <div className="space-y-2 mb-2 pt-2">
           {pollOptions.map((option) => {
             const voteCount = option.poll_votes?.[0]?.count || 0;
             const percentage = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
@@ -285,7 +291,7 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
         </div>
       )}
 
-      <div className="flex items-center gap-4 pt-4 border-t">
+      <div className="flex items-center gap-3 pt-1 pb-1 border-t">
         <Button
           variant="ghost"
           size="sm"

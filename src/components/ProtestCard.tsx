@@ -153,34 +153,34 @@ export const ProtestCard = ({ protest, currentUserId }: ProtestCardProps) => {
   const isOrganizer = currentUserId === protest.user_id;
 
   return (
-    <Card className="p-6 space-y-4">
+    <Card className="px-3 space-y-2 rounded-none">
       <div className="flex items-start gap-3">
-        <div className="p-3 bg-primary/10 rounded-full">
-          <Megaphone className="h-5 w-5 text-primary" />
+        <div className="p-2 bg-primary/10 rounded-full">
+          <Megaphone className="h-4 w-4 text-primary" />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <Avatar className="h-8 w-8">
               <AvatarImage src={organizerProfile?.avatar_url} />
-              <AvatarFallback>
+              <AvatarFallback className="text-xs">
                 {organizerProfile?.full_name?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <p className="font-semibold text-sm">
+            <div className="flex items-center gap-1 text-sm">
+              <span className="font-semibold">
                 {organizerProfile?.full_name || "Unknown User"}
-              </p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" />
+              </span>
+              <span className="text-muted-foreground">•</span>
+              <span className="text-muted-foreground">
                 {formatDistanceToNow(new Date(protest.created_at), { addSuffix: true })}
-              </p>
+              </span>
             </div>
           </div>
           
-          <div className="space-y-3">
+          <div className="space-y-1 pt-2">
             <div>
-              <h3 className="font-semibold mb-1">Reason for Protest</h3>
-              <p className="text-sm">{protest.reason}</p>
+              <h3 className="font-semibold mb-1 text-sm">Reason for Protest</h3>
+              <p className="text-sm leading-relaxed">{protest.reason}</p>
             </div>
             
             <div className="flex items-center gap-2 text-sm">
@@ -197,12 +197,12 @@ export const ProtestCard = ({ protest, currentUserId }: ProtestCardProps) => {
 
       {/* Response Buttons */}
       {userRole === "member" && userResponse ? (
-        <div className="flex items-center justify-center p-4 bg-green-50 border border-green-200 rounded-lg">
-          <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-          <span className="text-green-700 font-medium">You opted to visit the protest</span>
+        <div className="flex items-center justify-center p-3 bg-green-50 border border-green-200 rounded-lg">
+          <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+          <span className="text-green-700 font-medium text-sm">You opted to visit the protest</span>
         </div>
       ) : (
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap pb-2">
           <Button
             size="sm"
             variant={userResponse === "will_come" ? "default" : "outline"}
@@ -238,7 +238,7 @@ export const ProtestCard = ({ protest, currentUserId }: ProtestCardProps) => {
 
       {/* Results for Protest Organizer (Volunteer who posted) */}
       {isOrganizer && userRole && (userRole === "volunteer" || userRole === "executive" || userRole === "super_admin") && (
-        <div className="pt-4 border-t">
+        <div className="pt-4 pb-2 border-t">
           <p className="text-sm font-semibold mb-2">Total Responses: {responseCounts.will_come + responseCounts.cant_come + responseCounts.not_needed}</p>
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="bg-green-500/10 p-2 rounded text-center">

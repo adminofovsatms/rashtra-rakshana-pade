@@ -187,9 +187,12 @@ const PostFeed = ({ userId }: PostFeedProps) => {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div>
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-card p-6 rounded-lg animate-pulse h-48" />
+          <div key={i}>
+            <div className="bg-card px-3 rounded-none animate-pulse h-48" />
+            {i < 3 && <div className="border-b border-black/20"></div>}
+          </div>
         ))}
       </div>
     );
@@ -204,22 +207,25 @@ const PostFeed = ({ userId }: PostFeedProps) => {
   }
 
   return (
-    <div className="space-y-4">
-      {feedItems.map((item) => (
-        item.type === 'post' ? (
-          <PostCard 
-            key={`post-${item.data.id}`}
-            post={item.data} 
-            currentUserId={userId} 
-            onPostDeleted={() => fetchFeed(0, true)}
-          />
-        ) : (
-          <ProtestCard
-            key={`protest-${item.data.id}`}
-            protest={item.data}
-            currentUserId={userId}
-          />
-        )
+    <div>
+      {feedItems.map((item, index) => (
+        <div key={item.type === 'post' ? `post-${item.data.id}` : `protest-${item.data.id}`}>
+          {item.type === 'post' ? (
+            <PostCard 
+              post={item.data} 
+              currentUserId={userId} 
+              onPostDeleted={() => fetchFeed(0, true)}
+            />
+          ) : (
+            <ProtestCard
+              protest={item.data}
+              currentUserId={userId}
+            />
+          )}
+          {index < feedItems.length - 1 && (
+            <div className="border-b border-black/20"></div>
+          )}
+        </div>
       ))}
       
       {/* Infinite scroll trigger */}
