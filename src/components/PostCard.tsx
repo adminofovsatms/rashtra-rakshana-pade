@@ -179,7 +179,7 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
           ? post.media_url
           : [post.media_url];
 
-        await fetch("/delete-media", {
+        await fetch("https://hindunity-backend.vercel.app/delete-media", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ media_urls: mediaUrls }),
