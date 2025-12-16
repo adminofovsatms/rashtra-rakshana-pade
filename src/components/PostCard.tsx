@@ -100,10 +100,13 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
   };
 
   const handleLike = async () => {
+    //logged out users cannot like redirect to auth
+
     if (!currentUserId) {
-      window.location.href = "/auth";
+      navigate("/auth");
       return;
     }
+
     
     if (liked) {
       await supabase
@@ -125,10 +128,11 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
   };
 
   const handleVote = async (optionId: string) => {
-    if (!currentUserId) {
-      window.location.href = "/auth";
+        if (!currentUserId) {
+      navigate("/auth");
       return;
     }
+
     
     if (userVote) {
       toast({
@@ -163,27 +167,22 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!currentUserId || currentUserId !== post.user_id) {
-      return;
-    }
+ const handleDelete = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
 
-    if (!confirm("Are you sure you want to delete this post?")) {
-      return;
-    }
+    if (!currentUserId || currentUserId !== post.user_id) return;
 
     try {
       if (post.media_url) {
-        const mediaUrls = Array.isArray(post.media_url) ? post.media_url : [post.media_url];
-        
-        await fetch('http://localhost:5001/delete-media', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            media_urls: mediaUrls
-          }),
+        const mediaUrls = Array.isArray(post.media_url)
+          ? post.media_url
+          : [post.media_url];
+
+        await fetch("/delete-media", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ media_urls: mediaUrls }),
         });
       }
 
@@ -196,18 +195,37 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
 
       toast({
         title: "Post deleted",
-        description: "Your post and media have been successfully deleted"
+        description: "Your post and media have been successfully deleted",
       });
 
-      onPostDeleted?.();
+      onPostDeleted?.(); // removes post from UI without reload
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
+
+  const handleShare = () => {
+  // Not logged in → redirect to auth
+  if (!currentUserId) {
+    navigate("/auth");
+    return;
+  }
+
+  const postUrl = `${window.location.origin}/post/${post.id}`;
+  const text = post.content
+    ? `${post.content.slice(0, 100)}...`
+    : "Check out this post";
+
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
+    `${text}\n\n${postUrl}`
+  )}`;
+
+  window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+};
 
   const handleAvatarClick = () => {
     if (!currentUserId) {
@@ -308,14 +326,16 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
           </div>
         </div>
         {currentUserId === post.user_id && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDelete}
-            className="text-destructive hover:text-destructive h-6 w-6 p-0"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
+         <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={(e) => handleDelete(e)}
+        className="text-destructive hover:text-destructive h-6 w-6 p-0"
+      >
+  <Trash2 className="h-3 w-3" />
+</Button>
+
         )}
       </div>
 
@@ -461,23 +481,15 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
           <MessageCircle className="h-4 w-4 mr-1" />
           {commentCount}
         </Button>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="sm"
-          onClick={() => {
-            if (!currentUserId) {
-              window.location.href = "/auth";
-              return;
-            }
-            toast({
-              title: "Share",
-              description: "Share functionality coming soon!"
-            });
-          }}
+          onClick={handleShare}
         >
           <Share2 className="h-4 w-4 mr-1" />
           Share
         </Button>
+
       </div>
 
       {showComments && currentUserId && (
