@@ -1,0 +1,207 @@
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CheckCircle, XCircle, Twitter, MapPin, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+
+interface TwitterPost {
+  twitter_unique_id: string;
+  user_id: string;
+  content: string;
+  post_type: string;
+  media_url: string[] | null;
+  twitter_username: string;
+  source: string;
+  location: string | null;
+  status: string;
+  created_at: string;
+}
+
+interface TweetCardProps {
+  post: TwitterPost;
+  onAccept: (post: TwitterPost) => void;
+  onReject: (post: TwitterPost) => void;
+  processingId: string | null;
+}
+
+const TweetCard = ({ post, onAccept, onReject, processingId }: TweetCardProps) => {
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+
+  // Helper function to determine if URL is video
+  const isVideoUrl = (url: string): boolean => {
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+    const lowerUrl = url.toLowerCase();
+    return videoExtensions.some(ext => lowerUrl.includes(ext));
+  };
+
+  const mediaUrls = post.media_url || [];
+  const hasMedia = mediaUrls.length > 0;
+  const isProcessing = processingId === post.twitter_unique_id;
+
+  // Carousel navigation functions
+  const nextMedia = () => {
+    setCurrentMediaIndex((prev) => (prev + 1) % mediaUrls.length);
+  };
+
+  const prevMedia = () => {
+    setCurrentMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
+  };
+
+  const goToMedia = (index: number) => {
+    setCurrentMediaIndex(index);
+  };
+
+  return (
+    <Card className="px-3 animate-slide-up hover:shadow-md transition-shadow rounded-none">
+      {/* Header */}
+      <div className="flex items-start gap-3 pt-3">
+        <Avatar className="h-8 w-8">
+          <AvatarFallback className="text-xs bg-blue-500/10">
+            <Twitter className="h-4 w-4 text-blue-500" />
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <div className="flex items-center gap-1 text-sm">
+            <span className="font-semibold">@{post.twitter_username}</span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-muted-foreground">
+              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+            </span>
+            {post.location && (
+              <>
+                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {post.location}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        <Badge variant="secondary">{post.post_type}</Badge>
+      </div>
+
+      {/* Content */}
+      {post.content && (
+        <p className="mb-2 pt-2 whitespace-pre-wrap text-sm leading-relaxed">{post.content}</p>
+      )}
+
+      {/* Media Carousel */}
+      {hasMedia && (
+        <div className="relative mb-2 pt-2 group">
+          {/* Main Media Display */}
+          <div className="relative w-full">
+            {isVideoUrl(mediaUrls[currentMediaIndex]) ? (
+              <video
+                key={currentMediaIndex}
+                src={mediaUrls[currentMediaIndex]}
+                controls
+                className="rounded-none w-full h-auto object-contain max-h-[600px] bg-black"
+                preload="metadata"
+              />
+            ) : (
+              <img
+                src={mediaUrls[currentMediaIndex]}
+                alt={`Media ${currentMediaIndex + 1}`}
+                className="rounded-none w-full h-auto object-contain max-h-[600px] bg-black"
+                onError={(e) => {
+                  e.currentTarget.src = '/placeholder.svg';
+                }}
+              />
+            )}
+
+            {/* Navigation Buttons - Only show if multiple media */}
+            {mediaUrls.length > 1 && (
+              <>
+                {/* Previous Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={prevMedia}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </Button>
+
+                {/* Next Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={nextMedia}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </Button>
+
+                {/* Media Counter */}
+                <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                  {currentMediaIndex + 1} / {mediaUrls.length}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Carousel Indicators */}
+          {mediaUrls.length > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-2">
+              {mediaUrls.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => goToMedia(index)}
+                  className={`h-2 rounded-full transition-all ${
+                    index === currentMediaIndex
+                      ? 'w-6 bg-primary'
+                      : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                  }`}
+                  aria-label={`Go to media ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Metadata */}
+      <div className="pt-2 pb-2 border-t border-b text-xs text-muted-foreground">
+        <div className="flex items-center gap-4 flex-wrap">
+          <span>Tweet ID: {post.twitter_unique_id}</span>
+          <span>Source: {post.source}</span>
+          <span>User: {post.user_id.substring(0, 8)}...</span>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 pt-3 pb-3">
+        <Button
+          onClick={() => onAccept(post)}
+          disabled={isProcessing}
+          className="flex-1 bg-green-600 hover:bg-green-700"
+        >
+          {isProcessing ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <CheckCircle className="h-4 w-4 mr-2" />
+          )}
+          Accept & Publish
+        </Button>
+        <Button
+          onClick={() => onReject(post)}
+          disabled={isProcessing}
+          variant="destructive"
+          className="flex-1"
+        >
+          {isProcessing ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <XCircle className="h-4 w-4 mr-2" />
+          )}
+          Reject
+        </Button>
+      </div>
+    </Card>
+  );
+};
+
+export default TweetCard;

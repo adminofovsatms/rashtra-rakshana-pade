@@ -31,7 +31,7 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-
+  const presignedUrlApi = 'http://localhost:5001/api/get-upload-url';
   // Get user's location when component mounts
   useEffect(() => {
     const getUserLocation = async () => {
@@ -135,23 +135,48 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
     }
   };
 
-  const uploadFile = async (file: File, bucket: string): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${Date.now()}.${fileExt}`;
-    
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file);
+  const uploadFile = async (file: File, type: "image" | "video"): Promise<string | null> => {
+    try {
+      // Step 1: Get presigned URL from backend
+      const response = await fetch(presignedUrlApi, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          file_type: type,
+          file_name: file.name,
+          content_type: file.type,
+        }),
+      });
 
-    if (uploadError) {
-      throw uploadError;
+      if (!response.ok) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      const { upload_url, public_url } = await response.json();
+
+      // Step 2: Upload file directly to S3 using presigned URL
+      const uploadResponse = await fetch(upload_url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type,
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload file');
+      }
+
+      // Step 3: Return public URL for database
+      return public_url;
+
+    } catch (error) {
+      console.error("Upload error:", error);
+      throw error;
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName);
-
-    return publicUrl;
   };
 
   const handleCreatePost = async () => {
@@ -193,9 +218,8 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
     try {
       let uploadedUrl = null;
       
-      if (mediaFile) {
-        const bucket = postType === "image" ? "post-images" : "post-videos";
-        uploadedUrl = await uploadFile(mediaFile, bucket);
+      if (mediaFile && (postType === "image" || postType === "video")) {
+        uploadedUrl = await uploadFile(mediaFile, postType);
       }
 
       const { data: post, error: postError } = await supabase

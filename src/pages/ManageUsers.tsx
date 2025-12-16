@@ -23,6 +23,7 @@ const ManageUsers = () => {
   const [filteredUsers, setFilteredUsers] = useState<Profile[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -50,7 +51,9 @@ const ManageUsers = () => {
       return;
     }
 
-    // Check if user has super_admin role from user_roles table
+    setCurrentUserId(user.id);
+
+    // Check if user has super_admin or executive role from user_roles table
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
@@ -58,13 +61,15 @@ const ManageUsers = () => {
 
     const userRoles = roles?.map(r => r.role) || [];
     const isSuperAdmin = userRoles.includes("super_admin");
+    const isExecutive = userRoles.includes("executive");
 
-    if (!isSuperAdmin) {
+    // Allow access to both super_admin and executive
+    if (!isSuperAdmin && !isExecutive) {
       navigate("/");
       return;
     }
 
-    setCurrentUserRole("super_admin");
+    setCurrentUserRole(isSuperAdmin ? "super_admin" : "executive");
   };
 
   const fetchUsers = async () => {
@@ -77,7 +82,36 @@ const ManageUsers = () => {
     setFilteredUsers(data || []);
   };
 
-  const handleSuspend = async (userId: string, currentStatus: boolean) => {
+  // Check if current user can perform actions on target user
+  const canManageUser = (targetUserRole: string, targetUserId: string): boolean => {
+    // Can't manage yourself
+    if (targetUserId === currentUserId) {
+      return false;
+    }
+
+    // Super admin can manage anyone
+    if (currentUserRole === "super_admin") {
+      return true;
+    }
+
+    // Executive can manage members and volunteers, but not other executives or super_admins
+    if (currentUserRole === "executive") {
+      return targetUserRole === "member" || targetUserRole === "volunteer";
+    }
+
+    return false;
+  };
+
+  const handleSuspend = async (userId: string, currentStatus: boolean, targetUserRole: string) => {
+    if (!canManageUser(targetUserRole, userId)) {
+      toast({
+        title: "Permission Denied",
+        description: "You don't have permission to manage this user",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("profiles")
@@ -127,7 +161,16 @@ const ManageUsers = () => {
     }
   };
 
-  const handleDelete = async (userId: string) => {
+  const handleDelete = async (userId: string, targetUserRole: string) => {
+    if (!canManageUser(targetUserRole, userId)) {
+      toast({
+        title: "Permission Denied",
+        description: "You don't have permission to delete this user",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
       return;
     }
@@ -175,6 +218,9 @@ const ManageUsers = () => {
             </Button>
             <h1 className="text-2xl font-bold">Manage Users</h1>
           </div>
+          <Badge variant="outline" className="text-sm">
+            {currentUserRole === "super_admin" ? "Super Admin" : "Executive"} Access
+          </Badge>
         </div>
       </header>
 
@@ -191,66 +237,87 @@ const ManageUsers = () => {
           </div>
         </Card>
 
+        {/* Permission Info Banner for Executives */}
+        {currentUserRole === "executive" && (
+          <Card className="p-4 mb-6 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              <strong>Executive Access:</strong> You can manage Members and Volunteers only. 
+              Other Executives and Super Admins cannot be modified.
+            </p>
+          </Card>
+        )}
+
         <div className="space-y-4">
-          {filteredUsers.map((user) => (
-            <Card key={user.id} className="p-6 animate-fade-in">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-semibold text-lg">
-                      {user.full_name || "Anonymous"}
-                    </h3>
-                    <Badge variant={getRoleBadgeVariant(user.role)}>
-                      {user.role.replace("_", " ")}
-                    </Badge>
-                    {user.is_suspended && (
-                      <Badge variant="destructive">Suspended</Badge>
+          {filteredUsers.map((user) => {
+            const canManage = canManageUser(user.role, user.id);
+            const isSelf = user.id === currentUserId;
+
+            return (
+              <Card key={user.id} className="p-6 animate-fade-in">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-semibold text-lg">
+                        {user.full_name || "Anonymous"}
+                        {isSelf && <span className="text-sm text-muted-foreground ml-2">(You)</span>}
+                      </h3>
+                      <Badge variant={getRoleBadgeVariant(user.role)}>
+                        {user.role.replace("_", " ")}
+                      </Badge>
+                      {user.is_suspended && (
+                        <Badge variant="destructive">Suspended</Badge>
+                      )}
+                      {user.role === "executive" && !user.is_approved && (
+                        <Badge variant="outline">Pending Approval</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Joined: {new Date(user.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {/* Approve button - only for executives needing approval */}
+                    {user.role === "executive" && !user.is_approved && currentUserRole === "super_admin" && (
+                      <Button
+                        onClick={() => handleApprove(user.id)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
                     )}
-                    {user.role === "executive" && !user.is_approved && (
-                      <Badge variant="outline">Pending Approval</Badge>
+                    
+                    {/* Suspend button - only if user can be managed */}
+                    {canManage && (
+                      <Button
+                        onClick={() => handleSuspend(user.id, user.is_suspended, user.role)}
+                        size="sm"
+                        variant={user.is_suspended ? "outline" : "destructive"}
+                      >
+                        <Ban className="h-4 w-4 mr-1" />
+                        {user.is_suspended ? "Unsuspend" : "Suspend"}
+                      </Button>
+                    )}
+
+                    {/* Delete button - only if user can be managed */}
+                    {canManage && (
+                      <Button
+                        onClick={() => handleDelete(user.id, user.role)}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Joined: {new Date(user.created_at).toLocaleDateString()}
-                  </p>
                 </div>
-
-                <div className="flex gap-2">
-                  {user.role === "executive" && !user.is_approved && (
-                    <Button
-                      onClick={() => handleApprove(user.id)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Approve
-                    </Button>
-                  )}
-                  
-                  <Button
-                    onClick={() => handleSuspend(user.id, user.is_suspended)}
-                    size="sm"
-                    variant={user.is_suspended ? "outline" : "destructive"}
-                  >
-                    <Ban className="h-4 w-4 mr-1" />
-                    {user.is_suspended ? "Unsuspend" : "Suspend"}
-                  </Button>
-
-                  {currentUserRole === "super_admin" && (
-                    <Button
-                      onClick={() => handleDelete(user.id)}
-                      size="sm"
-                      variant="destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
 
           {filteredUsers.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">

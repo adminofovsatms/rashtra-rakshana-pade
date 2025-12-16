@@ -1,0 +1,6 @@
+Role - Email - Password
+SuperAdmin - admin@admin.com - admin123
+
+Member - member@gmail.com - 123456
+Volunteer - volunteer@gmail.com - 123456
+Executive - Executive@gmail.com - 123456

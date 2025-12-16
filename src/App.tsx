@@ -14,6 +14,12 @@ import OrganiseProtest from "./pages/OrganiseProtest";
 import ExecutiveDashboard from "./pages/ExecutiveDashboard";
 import ApproveExecutive from "./pages/ApproveExecutive";
 import NotFound from "./pages/NotFound";
+import PendingPosts from "./pages/PendingPosts";
+import EmailVerification from "./pages/Emailverification";
+import ForgotPassword from "./pages/Forgotpassword";
+import ResetPassword from "./pages/Resetpassword";
+import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +40,12 @@ const App = () => (
           <Route path="/organise-protest" element={<OrganiseProtest />} />
           <Route path="/executive-dashboard" element={<ExecutiveDashboard />} />
           <Route path="/approve-exec" element={<ApproveExecutive />} />
+          <Route path="/pending-posts" element={<PendingPosts />} />
+          <Route path="/email-verification" element={<EmailVerification />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/user/:userId" element={<UserProfile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

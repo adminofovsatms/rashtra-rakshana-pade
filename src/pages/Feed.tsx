@@ -14,7 +14,7 @@ const Feed = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isSuperAdmin, isExecutive, isVolunteer, loading: roleLoading } = useUserRole(session?.user.id);
+  const { isSuperAdmin, isExecutive, isVolunteer, isMember, loading: roleLoading } = useUserRole(session?.user.id);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -37,6 +37,7 @@ const Feed = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -84,7 +85,7 @@ const Feed = () => {
         title: "Logged out",
         description: "You have been successfully logged out"
       });
-      navigate("/");
+      navigate("/auth");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -110,13 +111,13 @@ const Feed = () => {
             Hindu Unity
           </h1>
           <div className="flex items-center gap-4">
-            {(isVolunteer || isExecutive || isSuperAdmin) && (
+            {(isVolunteer || isExecutive || isSuperAdmin || isMember) && (
               <Button onClick={() => navigate("/events")} variant="outline">
                 Events
               </Button>
             )}
             {isExecutive && (
-              <Button onClick={() => navigate("/executive-dashboard")} variant="outline">
+              <Button onClick={() => navigate("/manage-users")} variant="outline">
                 Dashboard
               </Button>
             )}
@@ -131,9 +132,15 @@ const Feed = () => {
               </>
             )}
             {session ? (
-              <Button onClick={handleLogout} variant="ghost" size="icon">
-                <LogOut className="h-5 w-5" />
-              </Button>
+              <>
+                <Button onClick={() => navigate("/profile")} variant="outline">
+                  Profile
+                </Button>
+                <Button onClick={handleLogout} variant="ghost" size="icon">
+                  
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </>
             ) : (
               <Button onClick={() => navigate("/auth")} variant="default">
                 Login

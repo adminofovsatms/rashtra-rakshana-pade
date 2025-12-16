@@ -111,6 +111,9 @@ const SuperAdmin = () => {
             <Button onClick={() => navigate("/manage-users")} className="w-full">
               Manage All Users
             </Button>
+            <Button onClick={() => navigate("/pending-posts")} variant="outline" className="w-full">
+              Review Pending Posts
+            </Button>
             <Button onClick={() => navigate("/events")} variant="outline" className="w-full">
               View All Events
             </Button>

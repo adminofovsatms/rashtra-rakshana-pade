@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import PostComments from "./PostComments";
 
@@ -14,7 +15,7 @@ interface PostCardProps {
     user_id: string;
     content: string | null;
     post_type: string;
-    media_url: string | null;
+    media_url: string | string[] | null;
     created_at: string;
     location?: string | null;
     profiles: {
@@ -33,6 +34,8 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
   const [showComments, setShowComments] = useState(false);
   const [pollOptions, setPollOptions] = useState<any[]>([]);
   const [userVote, setUserVote] = useState<string | null>(null);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -64,20 +67,17 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
   };
 
   const fetchPollData = async () => {
-    // Fetch poll options
     const { data: options } = await supabase
       .from("poll_options")
       .select("*")
       .eq("post_id", post.id);
 
     if (options) {
-      // Fetch aggregated vote counts from the secure view
       const { data: voteCounts } = await supabase
         .from("poll_vote_counts")
         .select("*")
         .in("poll_option_id", options.map(o => o.id));
 
-      // Merge vote counts with options
       const optionsWithVotes = options.map(option => ({
         ...option,
         poll_votes: [{ 
@@ -87,7 +87,6 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
 
       setPollOptions(optionsWithVotes);
 
-      // Check if current user has voted (RLS now only allows users to see their own votes)
       if (currentUserId) {
         const { data: userVotes } = await supabase
           .from("poll_votes")
@@ -174,6 +173,20 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
     }
 
     try {
+      if (post.media_url) {
+        const mediaUrls = Array.isArray(post.media_url) ? post.media_url : [post.media_url];
+        
+        await fetch('http://localhost:5001/delete-media', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            media_urls: mediaUrls
+          }),
+        });
+      }
+
       const { error } = await supabase
         .from("posts")
         .delete()
@@ -183,7 +196,7 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
 
       toast({
         title: "Post deleted",
-        description: "Your post has been successfully deleted"
+        description: "Your post and media have been successfully deleted"
       });
 
       onPostDeleted?.();
@@ -196,19 +209,92 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
     }
   };
 
+  const handleAvatarClick = () => {
+    if (!currentUserId) {
+      // Not logged in, redirect to auth
+      window.location.href = "/auth";
+      return;
+    }
+
+    // If it's the current user's post, go to their profile
+    if (currentUserId === post.user_id) {
+      navigate("/profile");
+    } else {
+      // Otherwise, go to the other user's profile
+      navigate(`/user/${post.user_id}`);
+    }
+  };
+
+  // Helper function to determine if URL is video
+  const isVideoUrl = (url: string): boolean => {
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+    const lowerUrl = url.toLowerCase();
+    return videoExtensions.some(ext => lowerUrl.includes(ext));
+  };
+
+  // Parse media_url to always be an array
+  const getMediaUrls = (): string[] => {
+    if (!post.media_url) return [];
+    if (Array.isArray(post.media_url)) return post.media_url;
+    
+    if (typeof post.media_url === 'string') {
+      try {
+        const parsed = JSON.parse(post.media_url);
+        return Array.isArray(parsed) ? parsed : [post.media_url];
+      } catch {
+        return [post.media_url];
+      }
+    }
+    return [];
+  };
+
+  const mediaUrls = getMediaUrls();
+  const hasMedia = mediaUrls.length > 0;
   const totalVotes = pollOptions.reduce((sum, opt) => sum + (opt.poll_votes?.[0]?.count || 0), 0);
+
+  // Carousel navigation functions
+  const nextMedia = () => {
+    setCurrentMediaIndex((prev) => (prev + 1) % mediaUrls.length);
+  };
+
+  const prevMedia = () => {
+    setCurrentMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
+  };
+
+  const goToMedia = (index: number) => {
+    setCurrentMediaIndex(index);
+  };
 
   return (
     <Card className="px-3 animate-slide-up hover:shadow-md transition-shadow rounded-none">
       <div className="flex items-start gap-3 pt-3">
-        <Avatar className="h-8 w-8">
-          <AvatarFallback className="text-xs">
-            {post.profiles.full_name?.[0] || "U"}
-          </AvatarFallback>
-        </Avatar>
+        {/* Clickable Avatar */}
+        <div onClick={handleAvatarClick} className="cursor-pointer">
+          <Avatar className="h-8 w-8 hover:opacity-80 transition-opacity">
+            {post.profiles.avatar_url ? (
+              <img 
+                src={post.profiles.avatar_url}  
+                alt={post.profiles.full_name || "User Avatar"}
+              />
+            ) : ( 
+              <AvatarFallback>
+                {post.profiles.full_name
+                  ? post.profiles.full_name.charAt(0).toUpperCase()
+                  : "U"}
+              </AvatarFallback>
+            )}
+          </Avatar>
+        </div>
+
         <div className="flex-1">
           <div className="flex items-center gap-1 text-sm">
-            <span className="font-semibold">{post.profiles.full_name || "Anonymous"}</span>
+            {/* Clickable Username */}
+            <span 
+              className="font-semibold cursor-pointer hover:underline"
+              onClick={handleAvatarClick}
+            >
+              {post.profiles.full_name || "Anonymous"}
+            </span>
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">
               {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
@@ -237,22 +323,82 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
         <p className="mb-2 pt-2 whitespace-pre-wrap text-sm leading-relaxed">{post.content}</p>
       )}
 
-      {post.post_type === "image" && post.media_url && (
-        <img
-          src={post.media_url}
-          alt="Post content"
-          className="rounded-none mb-2 pt-2 w-full h-auto object-contain max-h-[600px]"
-        />
+      {/* Media Carousel - Supports multiple images/videos */}
+      {hasMedia && post.post_type !== "poll" && (
+        <div className="relative mb-2 pt-2 group">
+          {/* Main Media Display */}
+          <div className="relative w-full">
+            {isVideoUrl(mediaUrls[currentMediaIndex]) ? (
+              <video
+                key={currentMediaIndex}
+                src={mediaUrls[currentMediaIndex]}
+                controls
+                className="rounded-none w-full h-auto object-contain max-h-[600px] bg-black"
+                preload="metadata"
+              />
+            ) : (
+              <img
+                src={mediaUrls[currentMediaIndex]}
+                alt={`Media ${currentMediaIndex + 1}`}
+                className="rounded-none w-full h-auto object-contain max-h-[600px] bg-black"
+                onError={(e) => {
+                  e.currentTarget.src = '/placeholder.svg';
+                }}
+              />
+            )}
+
+            {/* Navigation Buttons - Only show if multiple media */}
+            {mediaUrls.length > 1 && (
+              <>
+                {/* Previous Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={prevMedia}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </Button>
+
+                {/* Next Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={nextMedia}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </Button>
+
+                {/* Media Counter */}
+                <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                  {currentMediaIndex + 1} / {mediaUrls.length}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Carousel Indicators - Only show if multiple media */}
+          {mediaUrls.length > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-2">
+              {mediaUrls.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => goToMedia(index)}
+                  className={`h-2 rounded-full transition-all ${
+                    index === currentMediaIndex
+                      ? 'w-6 bg-primary'
+                      : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                  }`}
+                  aria-label={`Go to media ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
-      {post.post_type === "video" && post.media_url && (
-        <video
-          src={post.media_url}
-          controls
-          className="rounded-none mb-2 pt-2 w-full h-auto object-contain max-h-[400px]"
-        />
-      )}
-
+      {/* Poll */}
       {post.post_type === "poll" && pollOptions.length > 0 && (
         <div className="space-y-2 mb-2 pt-2">
           {pollOptions.map((option) => {

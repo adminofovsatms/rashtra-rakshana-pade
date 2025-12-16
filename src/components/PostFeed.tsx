@@ -2,8 +2,9 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PostCard from "./PostCard";
-import { ProtestCard } from "./ProtestCard";
 import { Loader2 } from "lucide-react";
+import { EventCard } from "./EventCard";
+
 
 interface Post {
   id: string;
@@ -18,17 +19,24 @@ interface Post {
   };
 }
 
-interface Protest {
+interface Event {
   id: string;
-  user_id: string;
-  reason: string;
-  location: string;
+  title: string;
+  description: string | null;
+  event_type: string;
+  location: string | null;
+  event_date: string;
   created_at: string;
+  created_by: string;
+  profiles: {
+    full_name: string | null;
+    avatar_url: string | null;
+  };
 }
 
 type FeedItem = 
   | { type: 'post'; data: Post }
-  | { type: 'protest'; data: Protest };
+  | { type: 'event'; data: Event };
 
 interface PostFeedProps {
   userId?: string;
@@ -64,17 +72,17 @@ const PostFeed = ({ userId }: PostFeedProps) => {
       )
       .subscribe();
 
-    const protestsChannel = supabase
-      .channel("protests-changes")
+    const eventsChannel = supabase
+      .channel("events-changes")
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
-          table: "protests"
+          table: "events"
         },
         () => {
-          // Reload from beginning when new protests are added
+          // Reload from beginning when new events are added
           fetchFeed(0, true);
         }
       )
@@ -82,7 +90,7 @@ const PostFeed = ({ userId }: PostFeedProps) => {
 
     return () => {
       supabase.removeChannel(postsChannel);
-      supabase.removeChannel(protestsChannel);
+      supabase.removeChannel(eventsChannel);
     };
   }, []);
 
@@ -131,22 +139,27 @@ const PostFeed = ({ userId }: PostFeedProps) => {
         `)
         .order("created_at", { ascending: false })
         .range(from, to);
-
       if (postsError) throw postsError;
-
-      // Fetch protests with pagination
-      const { data: protestsData, error: protestsError } = await supabase
-        .from("protests")
-        .select("*")
+          
+      // Fetch events with pagination
+      const { data: eventsData, error: eventsError } = await supabase
+        .from("events")
+        .select(`
+          *,
+          profiles (
+            full_name,
+            avatar_url
+          )
+        `)
         .order("created_at", { ascending: false })
         .range(from, to);
 
-      if (protestsError) throw protestsError;
-
+      if (eventsError) throw eventsError;
+          
       // Combine and sort by created_at
       const combined: FeedItem[] = [
         ...(postsData || []).map(post => ({ type: 'post' as const, data: post })),
-        ...(protestsData || []).map(protest => ({ type: 'protest' as const, data: protest }))
+        ...(eventsData || []).map(event => ({ type: 'event' as const, data: event }))
       ];
 
       combined.sort((a, b) => 
@@ -209,7 +222,7 @@ const PostFeed = ({ userId }: PostFeedProps) => {
   return (
     <div>
       {feedItems.map((item, index) => (
-        <div key={item.type === 'post' ? `post-${item.data.id}` : `protest-${item.data.id}`}>
+        <div className ="mb-4" key={item.type === 'post' ? `post-${item.data.id}` : `event-${item.data.id}`}>
           {item.type === 'post' ? (
             <PostCard 
               post={item.data} 
@@ -217,9 +230,10 @@ const PostFeed = ({ userId }: PostFeedProps) => {
               onPostDeleted={() => fetchFeed(0, true)}
             />
           ) : (
-            <ProtestCard
-              protest={item.data}
+            <EventCard
+              event={item.data}
               currentUserId={userId}
+              onEventDeleted={() => fetchFeed(0, true)}
             />
           )}
           {index < feedItems.length - 1 && (

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Calendar, MapPin, Users, Plus } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Plus, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +20,7 @@ interface Event {
   location: string | null;
   event_date: string;
   created_at: string;
+  created_by: string;
   profiles: {
     full_name: string | null;
   };
@@ -90,20 +91,25 @@ const Events = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("events").insert({
-        created_by: userId,
-        title: newEvent.title,
-        description: newEvent.description || null,
-        event_type: newEvent.event_type,
-        location: newEvent.location || null,
-        event_date: new Date(newEvent.event_date).toISOString()
-      });
+      // Create the event
+      const { data: eventData, error: eventError } = await supabase
+        .from("events")
+        .insert({
+          created_by: userId,
+          title: newEvent.title,
+          description: newEvent.description || null,
+          event_type: newEvent.event_type,
+          location: newEvent.location || null,
+          event_date: new Date(newEvent.event_date).toISOString()
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (eventError) throw eventError;
 
       toast({
         title: "Event created!",
-        description: "Your event has been posted"
+        description: "Your event has been created successfully"
       });
 
       setIsCreateOpen(false);
@@ -123,6 +129,35 @@ const Events = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm("Are you sure you want to delete this event?")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("events")
+        .delete()
+        .eq("id", eventId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Event deleted",
+        description: "The event has been successfully deleted"
+      });
+
+      // Remove event from local state
+      setEvents(events.filter(event => event.id !== eventId));
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -226,15 +261,28 @@ const Events = () => {
             {events.map((event) => (
               <Card key={event.id} className="p-6 animate-fade-in hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-4">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-xl font-semibold mb-1">{event.title}</h3>
                     <p className="text-sm text-muted-foreground">
                       Organized by {event.profiles.full_name || "Anonymous"}
                     </p>
                   </div>
-                  <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
-                    {event.event_type}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
+                      {event.event_type}
+                    </span>
+                    {/* Delete button - only visible to event creator */}
+                    {userId === event.created_by && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteEvent(event.id)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {event.description && (

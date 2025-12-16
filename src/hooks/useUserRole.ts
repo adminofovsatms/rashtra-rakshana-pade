@@ -21,6 +21,7 @@ export const useUserRole = (userId: string | undefined) => {
         if (error) throw error;
         
         setRoles(data?.map(r => r.role) || []);
+        // console.log(roles);
       } catch (error) {
         console.error("Error fetching roles:", error);
         setRoles([]);
@@ -37,7 +38,7 @@ export const useUserRole = (userId: string | undefined) => {
   const isExecutive = hasRole("executive");
   const isVolunteer = hasRole("volunteer");
   const isMember = hasRole("member");
-
+  // console.log({ roles, isSuperAdmin, isExecutive, isVolunteer, isMember });
   return {
     roles,
     loading,

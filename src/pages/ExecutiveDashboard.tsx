@@ -58,6 +58,7 @@ const ExecutiveDashboard = () => {
   useEffect(() => {
     if (!roleLoading && session) {
       if (!isExecutive && !isSuperAdmin) {
+        // console.log(isExecutive);
         toast({
           title: "Access Denied",
           description: "Only executives and super admins can view this dashboard",

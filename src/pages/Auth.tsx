@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Users, Shield, Crown, ArrowLeft } from "lucide-react";
+import { UserCircle, Users, Shield, ArrowLeft } from "lucide-react";
 
 type UserRole = "member" | "volunteer" | "executive" | "super_admin";
 
@@ -36,6 +36,7 @@ const Auth = () => {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -48,6 +49,16 @@ const Auth = () => {
       toast({
         title: "Please select a role",
         description: "Choose your role to continue with signup",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate password match for signup
+    if (!isLogin && password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are identical",
         variant: "destructive"
       });
       return;
@@ -86,13 +97,12 @@ const Auth = () => {
         if (error) throw error;
 
         toast({
-          title: selectedRole === "executive" ? "Approval Required" : "Account Created!",
-          description: selectedRole === "executive" 
-            ? "Your executive account requires admin approval before you can access all features"
-            : "Successfully created your account. You can now log in."
+          title: "Check Your Email",
+          description: "We've sent you a verification link"
         });
 
-        setIsLogin(true);
+        // Redirect to email verification page with email in state
+        navigate("/email-verification", { state: { email } });
       }
     } catch (error: any) {
       toast({
@@ -211,7 +221,19 @@ const Auth = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              {isLogin && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-sm"
+                  onClick={() => navigate("/forgot-password")}
+                >
+                  Forgot password?
+                </Button>
+              )}
+            </div>
             <Input
               id="password"
               type="password"
@@ -221,6 +243,23 @@ const Auth = () => {
               minLength={6}
             />
           </div>
+
+          {!isLogin && (
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-sm text-destructive">Passwords do not match</p>
+              )}
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Loading..." : isLogin ? "Log In" : "Sign Up"}
@@ -243,6 +282,7 @@ const Auth = () => {
             className="w-full"
             onClick={() => {
               setIsLogin(!isLogin);
+              setConfirmPassword("");
               if (!isLogin) setSelectedRole(null);
             }}
           >
@@ -252,6 +292,7 @@ const Auth = () => {
       </Card>
       </div>
     </div>
+  
   );
 };
 
