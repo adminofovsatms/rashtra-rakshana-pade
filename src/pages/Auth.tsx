@@ -97,12 +97,11 @@ const Auth = () => {
         if (error) throw error;
 
         toast({
-          title: "Check Your Email",
-          description: "We've sent you a verification link"
+          title: "Signup Successful",
+          description: "Account created! Please sign in"
         });
-
-        // Redirect to email verification page with email in state
-        navigate("/email-verification", { state: { email } });
+        //navigate to signin
+        setIsLogin(true);
       }
     } catch (error: any) {
       toast({

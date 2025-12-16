@@ -227,9 +227,10 @@ const PostFeed = ({ userId }: PostFeedProps) => {
             <PostCard 
               post={item.data} 
               currentUserId={userId} 
-              onPostDeleted={() => fetchFeed(0, true)}
-            />
-          ) : (
+              onPostDeleted={() => {
+                setFeedItems(prev => prev.filter(f => f.type !== 'post' || f.data.id !== item.data.id));
+              }}
+      />) : ( 
             <EventCard
               event={item.data}
               currentUserId={userId}
