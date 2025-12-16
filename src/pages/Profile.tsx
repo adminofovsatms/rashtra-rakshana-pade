@@ -87,7 +87,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const presignedUrlApi = "http://localhost:5001/api/get-upload-url";
+  const presignedUrlApi = "https://hindunity-backend.vercel.app/api/get-upload-url";
 
   useEffect(() => {
     fetchProfile();
