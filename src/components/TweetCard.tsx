@@ -44,7 +44,11 @@ const TweetCard = ({ post, onAccept, onReject, processingId }: TweetCardProps) =
   const nextMedia = () => {
     setCurrentMediaIndex((prev) => (prev + 1) % mediaUrls.length);
   };
-
+    function decodeHtmlEntities(text: string) {
+      const txt = document.createElement("textarea");
+      txt.innerHTML = text;
+      return txt.value;
+    }
   const prevMedia = () => {
     setCurrentMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
   };
@@ -83,10 +87,13 @@ const TweetCard = ({ post, onAccept, onReject, processingId }: TweetCardProps) =
         <Badge variant="secondary">{post.post_type}</Badge>
       </div>
 
-      {/* Content */}
+      {/* Content */}      
       {post.content && (
-        <p className="mb-2 pt-2 whitespace-pre-wrap text-sm leading-relaxed">{post.content}</p>
+        <p className="mb-2 pt-2 whitespace-pre-wrap text-sm leading-relaxed">
+          {decodeHtmlEntities(post.content)}
+        </p>
       )}
+
 
       {/* Media Carousel */}
       {hasMedia && (
