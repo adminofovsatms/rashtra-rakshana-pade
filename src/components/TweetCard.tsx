@@ -108,10 +108,32 @@ const TweetCard = ({ post, isMuted, onMuteToggle, onAccept, onReject, processing
   };
 
   function decodeHtmlEntities(text: string) {
-    const txt = document.createElement("textarea");
-    txt.innerHTML = text;
-    return txt.value;
-  }
+        const txt = document.createElement("textarea");
+        txt.innerHTML = text;
+        return txt.value;
+      }
+
+  function linkify(text: string) {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+      return text.split(urlRegex).map((part, index) => {
+        if (part.match(urlRegex)) {
+          return (
+            <a
+              key={index}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 underline break-all"
+            >
+              {part}
+            </a>
+          );
+        }
+        return part;
+      });
+    }
+
 
   const prevMedia = () => {
     setCurrentMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
@@ -154,7 +176,7 @@ const TweetCard = ({ post, isMuted, onMuteToggle, onAccept, onReject, processing
       {/* Content */}      
       {post.content && (
         <p className="mb-2 pt-2 whitespace-pre-wrap text-sm leading-relaxed">
-          {decodeHtmlEntities(post.content)}
+          {linkify(decodeHtmlEntities(post.content))}
         </p>
       )}
 
