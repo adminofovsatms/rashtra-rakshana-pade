@@ -87,8 +87,8 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const presignedUrlApi = "https://hindunity-backend.vercel.app/api/get-upload-url";
-
+  const presignedUrlApi = import.meta.env.VITE_BACKEND_URL+'/api/get-avatar-upload-url';
+    
   useEffect(() => {
     fetchProfile();
     fetchUserPosts();

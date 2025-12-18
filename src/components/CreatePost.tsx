@@ -31,8 +31,11 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const presignedUrlApi = 'https://hindunity-backend.vercel.app/api/get-upload-url';
-  // Get user's location when component mounts
+
+
+  const presignedUrlApi =
+  `${import.meta.env.VITE_BACKEND_URL}/api/get-upload-url`;
+
   useEffect(() => {
     const getUserLocation = async () => {
       if (!navigator.geolocation) {

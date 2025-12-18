@@ -27,6 +27,8 @@ interface PostCardProps {
   onPostDeleted?: () => void;
 }
 
+
+
 const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
@@ -37,6 +39,9 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const delete_api = import.meta.env.VITE_BACKEND_URL;
+
+
 
   useEffect(() => {
     fetchReactions();
@@ -56,6 +61,11 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
     setLikeCount(data?.length || 0);
     setLiked(currentUserId ? data?.some((r) => r.user_id === currentUserId) || false : false);
   };
+  function decodeHtmlEntities(text: string) {
+      const txt = document.createElement("textarea");
+      txt.innerHTML = text;
+      return txt.value;
+    }
 
   const fetchCommentCount = async () => {
     const { data } = await supabase
@@ -178,8 +188,9 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
         const mediaUrls = Array.isArray(post.media_url)
           ? post.media_url
           : [post.media_url];
-
-        await fetch("https://hindunity-backend.vercel.app/delete-media", {
+        
+        
+        await fetch(delete_api+'/delete-media', {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ media_urls: mediaUrls }),
@@ -219,6 +230,7 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
   const text = post.content
     ? `${post.content.slice(0, 100)}...`
     : "Check out this post";
+    
 
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
     `${text}\n\n${postUrl}`
@@ -340,8 +352,11 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
       </div>
 
       {post.content && (
-        <p className="mb-2 pt-2 whitespace-pre-wrap text-sm leading-relaxed">{post.content}</p>
+        <p className="mb-2 pt-2 whitespace-pre-wrap text-sm leading-relaxed">
+          {decodeHtmlEntities(post.content)}
+        </p>
       )}
+
 
       {/* Media Carousel - Supports multiple images/videos */}
       {hasMedia && post.post_type !== "poll" && (
