@@ -19,29 +19,25 @@ const ResetPassword = () => {
 
   useEffect(() => {
     // Check if user came from a valid reset link
-    const checkResetToken = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          setTokenValid(true);
-        } else {
-          toast({
-            title: "Invalid or Expired Link",
-            description: "This password reset link is invalid or has expired",
-            variant: "destructive"
-          });
-          setTimeout(() => navigate("/forgot-password"), 3000);
-        }
-      } catch (error) {
-        console.error("Error checking token:", error);
-        navigate("/forgot-password");
-      } finally {
-        setCheckingToken(false);
-      }
-    };
+    const hash = window.location.hash.substring(1); // remove #
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get("access_token");
 
-    checkResetToken();
+    if (!accessToken) {
+      toast({
+        title: "Invalid or Expired Link",
+        description: "This password reset link is invalid or has expired",
+        variant: "destructive"
+      });
+      setTimeout(() => navigate("/forgot-password"), 3000);
+      setCheckingToken(false);
+      return;
+    }
+
+    // Save token in localStorage for password reset
+    window.localStorage.setItem("recovery_token", accessToken);
+    setTokenValid(true);
+    setCheckingToken(false);
   }, [navigate, toast]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -70,8 +66,12 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
+      const token = window.localStorage.getItem("recovery_token");
+      if (!token) throw new Error("Invalid or expired reset token");
+
       const { error } = await supabase.auth.updateUser({
-        password: password
+        access_token: token,
+        password
       });
 
       if (error) throw error;
@@ -81,10 +81,11 @@ const ResetPassword = () => {
         description: "Your password has been updated. You can now log in with your new password."
       });
 
+      // Clear token after reset
+      window.localStorage.removeItem("recovery_token");
+
       // Redirect to login after 2 seconds
-      setTimeout(() => {
-        navigate("/auth");
-      }, 2000);
+      setTimeout(() => navigate("/auth"), 2000);
     } catch (error: any) {
       toast({
         title: "Error",
