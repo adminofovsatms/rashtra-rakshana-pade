@@ -42,77 +42,99 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!isLogin && !selectedRole) {
-      toast({
-        title: "Please select a role",
-        description: "Choose your role to continue with signup",
-        variant: "destructive"
+ const handleAuth = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!isLogin && !selectedRole) {
+    toast({
+      title: "Please select a role",
+      description: "Choose your role to continue with signup",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  if (!isLogin && password !== confirmPassword) {
+    toast({
+      title: "Passwords don't match",
+      description: "Please make sure both passwords are identical",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    if (isLogin) {
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
-      return;
-    }
 
-    // Validate password match for signup
-    if (!isLogin && password !== confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure both passwords are identical",
-        variant: "destructive"
-      });
-      return;
-    }
+      if (loginError) throw loginError;
 
-    setLoading(true);
+      // Fetch the user's profile from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role, is_approved")
+        .eq("id", loginData.user?.id)
+        .single();
+      console.log(profile);
+      if (profileError) throw profileError;
 
-    try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-
-        if (error) throw error;
+      // Block executive users who are not approved
+      if (profile.role === "executive" && !profile.is_approved) {
+        // Log out the user
+        await supabase.auth.signOut();
 
         toast({
-          title: "Welcome back!",
-          description: "Successfully logged in"
+          title: "Access Denied",
+          description: "Your account is not approved yet.",
+          variant: "destructive"
         });
-
-        navigate("/");
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-              role: selectedRole
-            },
-            emailRedirectTo: `${window.location.origin}/`
-          }
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Signup Successful",
-          description: "Account created! Please sign in"
-        });
-        //navigate to signin
-        setIsLogin(true);
+        return;
       }
-    } catch (error: any) {
+
       toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
+        title: "Welcome back!",
+        description: "Successfully logged in"
       });
-    } finally {
-      setLoading(false);
+
+      navigate("/");
+    } else {
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            role: selectedRole
+          },
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (signUpError) throw signUpError;
+
+      toast({
+        title: "Signup Successful",
+        description: "Account created! Please sign in"
+      });
+
+      setIsLogin(true);
     }
-  };
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.message,
+      variant: "destructive"
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   if (!isLogin && !selectedRole) {
     return (
