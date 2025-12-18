@@ -1,3 +1,5 @@
+// postfeed
+
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -48,10 +50,25 @@ const PostFeed = ({ userId }: PostFeedProps) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const [isMuted, setIsMuted] = useState(false); // Default: unmuted
   const observerTarget = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const ITEMS_PER_PAGE = 5;
+
+  // Load mute preference from localStorage on mount
+  useEffect(() => {
+    const savedMuteState = localStorage.getItem('videoMuted');
+    if (savedMuteState !== null) {
+      setIsMuted(savedMuteState === 'true');
+    }
+  }, []);
+
+  // Handle mute toggle from any video
+  const handleMuteToggle = (muted: boolean) => {
+    setIsMuted(muted);
+    localStorage.setItem('videoMuted', String(muted));
+  };
 
   useEffect(() => {
     fetchFeed(0, true);
@@ -226,7 +243,9 @@ const PostFeed = ({ userId }: PostFeedProps) => {
           {item.type === 'post' ? (
             <PostCard 
               post={item.data} 
-              currentUserId={userId} 
+              currentUserId={userId}
+              isMuted={isMuted}
+              onMuteToggle={handleMuteToggle}
               onPostDeleted={() => {
                 setFeedItems(prev => prev.filter(f => f.type !== 'post' || f.data.id !== item.data.id));
               }}

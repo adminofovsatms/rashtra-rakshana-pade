@@ -1,13 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, MessageCircle, Share2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, MessageCircle, Share2, Trash2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import PostComments from "./PostComments";
+
+interface LinkPreview {
+  url: string;
+  display_url: string;
+  title: string;
+  description: string;
+  image: string;
+  domain: string;
+  card_type: string;
+}
 
 interface PostCardProps {
   post: {
@@ -18,18 +28,21 @@ interface PostCardProps {
     media_url: string | string[] | null;
     created_at: string;
     location?: string | null;
+    link_preview?: LinkPreview | null;
     profiles: {
       full_name: string | null;
       avatar_url: string | null;
     };
   };
   currentUserId?: string;
+  isMuted: boolean;
+  onMuteToggle: (muted: boolean) => void;
   onPostDeleted?: () => void;
 }
 
 
 
-const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
+const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }: PostCardProps) => {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
@@ -37,6 +50,7 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
   const [pollOptions, setPollOptions] = useState<any[]>([]);
   const [userVote, setUserVote] = useState<string | null>(null);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const delete_api = import.meta.env.VITE_BACKEND_URL;
@@ -50,6 +64,54 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
       fetchPollData();
     }
   }, [post.id, currentUserId]);
+
+  // Auto-play video when in viewport
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Video is in viewport - play
+            video.play().catch(err => console.log('Autoplay prevented:', err));
+          } else {
+            // Video is out of viewport - pause
+            video.pause();
+          }
+        });
+      },
+      {
+        threshold: 0.5, // 50% of video must be visible
+      }
+    );
+
+    observer.observe(video);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [currentMediaIndex]); // Re-run when media changes
+
+  // Listen for volume changes and sync mute state with parent
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleVolumeChange = () => {
+      // When user manually changes mute state via video controls
+      if (video.muted !== isMuted) {
+        onMuteToggle(video.muted);
+      }
+    };
+
+    video.addEventListener('volumechange', handleVolumeChange);
+
+    return () => {
+      video.removeEventListener('volumechange', handleVolumeChange);
+    };
+  }, [isMuted, onMuteToggle]);
 
   const fetchReactions = async () => {
     const { data } = await supabase
@@ -357,7 +419,7 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
         </p>
       )}
 
-
+    
       {/* Media Carousel - Supports multiple images/videos */}
       {hasMedia && post.post_type !== "poll" && (
         <div className="relative mb-2 pt-2 group">
@@ -365,9 +427,13 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
           <div className="relative w-full">
             {isVideoUrl(mediaUrls[currentMediaIndex]) ? (
               <video
+                ref={videoRef}
                 key={currentMediaIndex}
                 src={mediaUrls[currentMediaIndex]}
                 controls
+                muted={isMuted}
+                loop
+                playsInline
                 className="rounded-none w-full h-auto object-contain max-h-[600px] bg-black"
                 preload="metadata"
               />
@@ -431,6 +497,51 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Link Preview Card */}
+      {post.link_preview && (
+        <a
+          href={post.link_preview.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mb-2 border border-gray-200 rounded-xl overflow-hidden hover:bg-gray-50 transition-colors group"
+        >
+          {/* Preview Image */}
+          {post.link_preview.image && (
+            <div className="relative w-full bg-gray-100">
+              <img
+                src={post.link_preview.image}
+                alt={post.link_preview.title}
+                className="w-full h-auto object-cover max-h-[400px]"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+
+          {/* Preview Content */}
+          <div className="p-3">
+            {/* Title */}
+            <h3 className="font-semibold text-sm line-clamp-2 mb-1 group-hover:underline">
+              {post.link_preview.title}
+            </h3>
+
+            {/* Description */}
+            {post.link_preview.description && (
+              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                {post.link_preview.description}
+              </p>
+            )}
+
+            {/* Domain with external link icon */}
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <ExternalLink className="h-3 w-3" />
+              <span>{post.link_preview.domain}</span>
+            </div>
+          </div>
+        </a>
       )}
 
       {/* Poll */}
