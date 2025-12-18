@@ -128,7 +128,26 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
       txt.innerHTML = text;
       return txt.value;
     }
+     function linkify(text: string) {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
 
+      return text.split(urlRegex).map((part, index) => {
+        if (part.match(urlRegex)) {
+          return (
+            <a
+              key={index}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 underline break-all"
+            >
+              {part}
+            </a>
+          );
+        }
+        return part;
+      });
+    }
   const fetchCommentCount = async () => {
     const { data } = await supabase
       .from("comments")
@@ -415,7 +434,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
 
       {post.content && (
         <p className="mb-2 pt-2 whitespace-pre-wrap text-sm leading-relaxed">
-          {decodeHtmlEntities(post.content)}
+          {linkify(decodeHtmlEntities(post.content))}
         </p>
       )}
 
