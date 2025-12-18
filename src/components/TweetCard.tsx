@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CheckCircle, XCircle, Twitter, MapPin, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle, XCircle, Twitter, MapPin, Loader2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+
+interface LinkPreview {
+  url: string;
+  display_url: string;
+  title: string;
+  description: string;
+  image: string;
+  domain: string;
+  card_type: string;
+}
 
 interface TwitterPost {
   twitter_unique_id: string;
@@ -17,17 +27,21 @@ interface TwitterPost {
   location: string | null;
   status: string;
   created_at: string;
+  link_preview: LinkPreview | null;
 }
 
 interface TweetCardProps {
   post: TwitterPost;
+  isMuted: boolean;
+  onMuteToggle: (muted: boolean) => void;
   onAccept: (post: TwitterPost) => void;
   onReject: (post: TwitterPost) => void;
   processingId: string | null;
 }
 
-const TweetCard = ({ post, onAccept, onReject, processingId }: TweetCardProps) => {
+const TweetCard = ({ post, isMuted, onMuteToggle, onAccept, onReject, processingId }: TweetCardProps) => {
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Helper function to determine if URL is video
   const isVideoUrl = (url: string): boolean => {
@@ -40,15 +54,65 @@ const TweetCard = ({ post, onAccept, onReject, processingId }: TweetCardProps) =
   const hasMedia = mediaUrls.length > 0;
   const isProcessing = processingId === post.twitter_unique_id;
 
+  // Auto-play video when in viewport
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Video is in viewport - play
+            video.play().catch(err => console.log('Autoplay prevented:', err));
+          } else {
+            // Video is out of viewport - pause
+            video.pause();
+          }
+        });
+      },
+      {
+        threshold: 0.5, // 50% of video must be visible
+      }
+    );
+
+    observer.observe(video);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [currentMediaIndex]); // Re-run when media changes
+
+  // Listen for volume changes and sync mute state with parent
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleVolumeChange = () => {
+      // When user manually changes mute state via video controls
+      if (video.muted !== isMuted) {
+        onMuteToggle(video.muted);
+      }
+    };
+
+    video.addEventListener('volumechange', handleVolumeChange);
+
+    return () => {
+      video.removeEventListener('volumechange', handleVolumeChange);
+    };
+  }, [isMuted, onMuteToggle]);
+
   // Carousel navigation functions
   const nextMedia = () => {
     setCurrentMediaIndex((prev) => (prev + 1) % mediaUrls.length);
   };
-    function decodeHtmlEntities(text: string) {
-      const txt = document.createElement("textarea");
-      txt.innerHTML = text;
-      return txt.value;
-    }
+
+  function decodeHtmlEntities(text: string) {
+    const txt = document.createElement("textarea");
+    txt.innerHTML = text;
+    return txt.value;
+  }
+
   const prevMedia = () => {
     setCurrentMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
   };
@@ -94,6 +158,7 @@ const TweetCard = ({ post, onAccept, onReject, processingId }: TweetCardProps) =
         </p>
       )}
 
+      
 
       {/* Media Carousel */}
       {hasMedia && (
@@ -102,9 +167,13 @@ const TweetCard = ({ post, onAccept, onReject, processingId }: TweetCardProps) =
           <div className="relative w-full">
             {isVideoUrl(mediaUrls[currentMediaIndex]) ? (
               <video
+                ref={videoRef}
                 key={currentMediaIndex}
                 src={mediaUrls[currentMediaIndex]}
                 controls
+                muted={isMuted}
+                loop
+                playsInline
                 className="rounded-none w-full h-auto object-contain max-h-[600px] bg-black"
                 preload="metadata"
               />
@@ -168,6 +237,51 @@ const TweetCard = ({ post, onAccept, onReject, processingId }: TweetCardProps) =
             </div>
           )}
         </div>
+      )}
+
+      {/* Link Preview Card */}
+      {post.link_preview && (
+        <a
+          href={post.link_preview.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mb-2 border border-gray-200 rounded-xl overflow-hidden hover:bg-gray-50 transition-colors group"
+        >
+          {/* Preview Image */}
+          {post.link_preview.image && (
+            <div className="relative w-full bg-gray-100">
+              <img
+                src={post.link_preview.image}
+                alt={post.link_preview.title}
+                className="w-full h-auto object-cover max-h-[400px]"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+
+          {/* Preview Content */}
+          <div className="p-3">
+            {/* Title */}
+            <h3 className="font-semibold text-sm line-clamp-2 mb-1 group-hover:underline">
+              {post.link_preview.title}
+            </h3>
+
+            {/* Description */}
+            {post.link_preview.description && (
+              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                {post.link_preview.description}
+              </p>
+            )}
+
+            {/* Domain with external link icon */}
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <ExternalLink className="h-3 w-3" />
+              <span>{post.link_preview.domain}</span>
+            </div>
+          </div>
+        </a>
       )}
 
       {/* Metadata */}

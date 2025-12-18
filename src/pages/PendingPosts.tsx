@@ -1,3 +1,5 @@
+//pending posts 
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +9,16 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, CheckCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import TweetCard from "@/components/TweetCard";
+
+interface LinkPreview {
+  url: string;
+  display_url: string;
+  title: string;
+  description: string;
+  image: string;
+  domain: string;
+  card_type: string;
+}
 
 interface TwitterPost {
   twitter_unique_id: string;
@@ -19,12 +31,14 @@ interface TwitterPost {
   location: string | null;
   status: string;
   created_at: string;
+  link_preview: LinkPreview | null;
 }
 
 const PendingPosts = () => {
   const [posts, setPosts] = useState<TwitterPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(false); // Default: unmuted
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,6 +46,20 @@ const PendingPosts = () => {
     checkSuperAdmin();
     fetchPendingPosts();
   }, []);
+
+  // Load mute preference from localStorage on mount
+  useEffect(() => {
+    const savedMuteState = localStorage.getItem('videoMuted');
+    if (savedMuteState !== null) {
+      setIsMuted(savedMuteState === 'true');
+    }
+  }, []);
+
+  // Handle mute toggle from any video
+  const handleMuteToggle = (muted: boolean) => {
+    setIsMuted(muted);
+    localStorage.setItem('videoMuted', String(muted));
+  };
 
   const checkSuperAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -97,6 +125,7 @@ const PendingPosts = () => {
         twitter_username: post.twitter_username,
         source: post.source,
         location: post.location,
+        link_preview: post.link_preview,  // NEW: Include link preview data
       };
 
       // Insert into posts table
@@ -225,6 +254,8 @@ const PendingPosts = () => {
                 <TweetCard
                   key={post.twitter_unique_id}
                   post={post}
+                  isMuted={isMuted}
+                  onMuteToggle={handleMuteToggle}
                   onAccept={handleAccept}
                   onReject={handleReject}
                   processingId={processingId}
