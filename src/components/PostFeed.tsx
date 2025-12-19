@@ -54,7 +54,21 @@ const PostFeed = ({ userId }: PostFeedProps) => {
   const observerTarget = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const ITEMS_PER_PAGE = 5;
+  const ITEMS_PER_PAGE = 10;
+
+  // Load mute preference from localStorage on mount
+  useEffect(() => {
+    const savedMuteState = localStorage.getItem('videoMuted');
+    if (savedMuteState !== null) {
+      setIsMuted(savedMuteState === 'true');
+    }
+  }, []);
+
+  // Handle mute toggle from any video
+  const handleMuteToggle = (muted: boolean) => {
+    setIsMuted(muted);
+    localStorage.setItem('videoMuted', String(muted));
+  };
 
   // Load mute preference from localStorage on mount
   useEffect(() => {
