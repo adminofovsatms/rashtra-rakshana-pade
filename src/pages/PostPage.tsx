@@ -3,8 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PostCard from "@/components/PostCard";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 const PostPage = () => {
   const { postId } = useParams();
@@ -50,7 +49,8 @@ const PostPage = () => {
       toast({
         title: "Error",
         description: "Post not found",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       navigate("/");
     } finally {
@@ -78,15 +78,11 @@ const PostPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
+        <div className="container mx-auto px-2 py-2">
+          <h1 
+            className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => navigate("/")}
           >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Hindu Unity
           </h1>
         </div>

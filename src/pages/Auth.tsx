@@ -98,11 +98,6 @@ const Auth = () => {
         return;
       }
 
-      toast({
-        title: "Welcome back!",
-        description: "Successfully logged in",
-        duration: 1000
-      });
 
       navigate("/");
     } else {
