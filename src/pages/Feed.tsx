@@ -8,6 +8,15 @@ import { useToast } from "@/hooks/use-toast";
 import CreatePost from "@/components/CreatePost";
 import PostFeed from "@/components/PostFeed";
 import { useUserRole } from "@/hooks/useUserRole";
+import { Menu } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+
 
 const Feed = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -15,7 +24,8 @@ const Feed = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isSuperAdmin, isExecutive, isVolunteer, isMember, loading: roleLoading } = useUserRole(session?.user.id);
-
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -105,49 +115,154 @@ const Feed = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
-      <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-2 py-2 flex items-center justify-between">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Hindu Unity
-          </h1>
-          <div className="flex items-center gap-2">
-            {(isVolunteer || isExecutive || isSuperAdmin || isMember) && (
-              <Button onClick={() => navigate("/events")} variant="outline" size="sm">
-                Events
+    <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
+  <div className="container mx-auto px-2 py-2 flex items-center justify-between">
+    <h1 
+      className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent cursor-pointer"
+      onClick={() => navigate("/")}
+    >
+      Hindu Unity
+    </h1>
+    
+    {/* Desktop Navigation - Hidden on mobile */}
+    <div className="hidden md:flex items-center gap-2">
+      {(isVolunteer || isExecutive || isSuperAdmin || isMember) && (
+        <Button onClick={() => navigate("/events")} variant="outline" size="sm">
+          Events
+        </Button>
+      )}
+      {isExecutive && (
+        <Button onClick={() => navigate("/manage-users")} variant="outline" size="sm">
+          Dashboard
+        </Button>
+      )}
+      {isSuperAdmin && (
+        <>
+          <Button onClick={() => navigate("/manage-users")} variant="outline" size="sm">
+            Manage Users
+          </Button>
+          <Button onClick={() => navigate("/admin")} variant="outline" size="sm">
+            Super Admin
+          </Button>
+        </>
+      )}
+      {session ? (
+        <>
+          <Button onClick={() => navigate("/profile")} variant="outline" size="sm">
+            Profile
+          </Button>
+          <Button onClick={handleLogout} variant="ghost" size="icon" className="h-8 w-8">
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </>
+      ) : (
+        <Button onClick={() => navigate("/auth")} variant="default" size="sm">
+          Login
+        </Button>
+      )}
+    </div>
+
+    {/* Mobile Hamburger Menu - Hidden on desktop */}
+    <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+      <SheetTrigger asChild className="md:hidden">
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-64">
+        <SheetHeader>
+          <SheetTitle>Menu</SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-col gap-2 mt-4">
+          {(isVolunteer || isExecutive || isSuperAdmin || isMember) && (
+            <Button 
+              onClick={() => {
+                navigate("/events");
+                setMobileMenuOpen(false);
+              }} 
+              variant="outline" 
+              className="w-full justify-start"
+            >
+              Events
+            </Button>
+          )}
+          {isExecutive && (
+            <Button 
+              onClick={() => {
+                navigate("/manage-users");
+                setMobileMenuOpen(false);
+              }} 
+              variant="outline" 
+              className="w-full justify-start"
+            >
+              Dashboard
+            </Button>
+          )}
+          {isSuperAdmin && (
+            <>
+              <Button 
+                onClick={() => {
+                  navigate("/manage-users");
+                  setMobileMenuOpen(false);
+                }} 
+                variant="outline" 
+                className="w-full justify-start"
+              >
+                Manage Users
               </Button>
-            )}
-            {isExecutive && (
-              <Button onClick={() => navigate("/manage-users")} variant="outline" size="sm">
-                Dashboard
+              <Button 
+                onClick={() => {
+                  navigate("/admin");
+                  setMobileMenuOpen(false);
+                }} 
+                variant="outline" 
+                className="w-full justify-start"
+              >
+                Super Admin
               </Button>
-            )}
-            {isSuperAdmin && (
-              <>
-                <Button onClick={() => navigate("/manage-users")} variant="outline" size="sm">
-                  Manage Users
-                </Button>
-                <Button onClick={() => navigate("/admin")} variant="outline" size="sm">
-                  Super Admin
-                </Button>
-              </>
-            )}
-            {session ? (
-              <>
-                <Button onClick={() => navigate("/profile")} variant="outline" size="sm">
-                  Profile
-                </Button>
-                <Button onClick={handleLogout} variant="ghost" size="icon" className="h-8 w-8">
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => navigate("/auth")} variant="default" size="sm">
-                Login
+            </>
+          )}
+          {session ? (
+            <>
+              <Button 
+                onClick={() => {
+                  navigate("/profile");
+                  setMobileMenuOpen(false);
+                }} 
+                variant="outline" 
+                className="w-full justify-start"
+              >
+                Profile
               </Button>
-            )}
-          </div>
+              <Button 
+                onClick={() => {
+                  handleLogout();
+                  setMobileMenuOpen(false);
+                }} 
+                variant="outline" 
+                className="w-full justify-start text-destructive"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </>
+          ) : (
+            <Button 
+              onClick={() => {
+                navigate("/auth");
+                setMobileMenuOpen(false);
+              }} 
+              variant="default" 
+              className="w-full"
+            >
+              Login
+            </Button>
+          )}
         </div>
-      </header>
+      </SheetContent>
+    </Sheet>
+  </div>
+</header>
 
       <main className="container mx-auto px-2 py-2 max-w-2xl">
         <div className="space-y-2">
