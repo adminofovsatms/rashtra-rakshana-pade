@@ -65,7 +65,7 @@ const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) => {
 
   const fetchPollData = async () => {
     // Fetch poll options
-    const { data: options } = await supabase
+    const { data : options } = await supabase
       .from("poll_options")
       .select("*")
       .eq("post_id", post.id);
