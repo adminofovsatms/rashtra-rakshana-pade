@@ -60,6 +60,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
   useEffect(() => {
     fetchReactions();
     fetchCommentCount();
+    
     if (post.post_type === "poll") {
       fetchPollData();
     }
