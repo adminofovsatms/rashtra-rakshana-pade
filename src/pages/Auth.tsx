@@ -117,11 +117,6 @@ const Auth = () => {
 
       if (signUpError) throw signUpError;
 
-      toast({
-        title: "Signup Successful",
-        description: "Account created! Please sign in"
-      });
-
       setIsLogin(true);
     }
   } catch (error: any) {

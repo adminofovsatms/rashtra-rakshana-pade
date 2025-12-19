@@ -1,5 +1,3 @@
-// postfeed
-
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -50,19 +48,11 @@ const PostFeed = ({ userId }: PostFeedProps) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
-  const [isMuted, setIsMuted] = useState(false); // Default: unmuted
+  const [isMuted, setIsMuted] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const ITEMS_PER_PAGE = 10;
-
-  // Load mute preference from localStorage on mount
-  useEffect(() => {
-    const savedMuteState = localStorage.getItem('videoMuted');
-    if (savedMuteState !== null) {
-      setIsMuted(savedMuteState === 'true');
-    }
-  }, []);
 
   // Load mute preference from localStorage on mount
   useEffect(() => {
@@ -91,7 +81,6 @@ const PostFeed = ({ userId }: PostFeedProps) => {
           table: "posts"
         },
         () => {
-          // Reload from beginning when new posts are added
           fetchFeed(0, true);
         }
       )
@@ -107,7 +96,6 @@ const PostFeed = ({ userId }: PostFeedProps) => {
           table: "events"
         },
         () => {
-          // Reload from beginning when new events are added
           fetchFeed(0, true);
         }
       )
@@ -152,7 +140,6 @@ const PostFeed = ({ userId }: PostFeedProps) => {
       const from = pageNum * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      // Fetch posts with pagination
       const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select(`
@@ -166,7 +153,6 @@ const PostFeed = ({ userId }: PostFeedProps) => {
         .range(from, to);
       if (postsError) throw postsError;
           
-      // Fetch events with pagination
       const { data: eventsData, error: eventsError } = await supabase
         .from("events")
         .select(`
@@ -181,7 +167,6 @@ const PostFeed = ({ userId }: PostFeedProps) => {
 
       if (eventsError) throw eventsError;
           
-      // Combine and sort by created_at
       const combined: FeedItem[] = [
         ...(postsData || []).map(post => ({ type: 'post' as const, data: post })),
         ...(eventsData || []).map(event => ({ type: 'event' as const, data: event }))
@@ -191,7 +176,6 @@ const PostFeed = ({ userId }: PostFeedProps) => {
         new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
       );
 
-      // Take only the items we need for this page
       const pageItems = combined.slice(0, ITEMS_PER_PAGE);
 
       if (reset) {
@@ -202,7 +186,6 @@ const PostFeed = ({ userId }: PostFeedProps) => {
         setPage(pageNum + 1);
       }
 
-      // Check if there are more items to load
       setHasMore(pageItems.length === ITEMS_PER_PAGE);
 
     } catch (error: any) {
@@ -247,7 +230,7 @@ const PostFeed = ({ userId }: PostFeedProps) => {
   return (
     <div>
       {feedItems.map((item, index) => (
-        <div className ="mb-4" key={item.type === 'post' ? `post-${item.data.id}` : `event-${item.data.id}`}>
+        <div key={item.type === 'post' ? `post-${item.data.id}` : `event-${item.data.id}`}>
           {item.type === 'post' ? (
             <PostCard 
               post={item.data} 
@@ -270,7 +253,6 @@ const PostFeed = ({ userId }: PostFeedProps) => {
         </div>
       ))}
       
-      {/* Infinite scroll trigger */}
       <div ref={observerTarget} className="py-4">
         {loadingMore && (
           <div className="flex justify-center items-center gap-2 text-muted-foreground">

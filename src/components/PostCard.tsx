@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, MessageCircle, Share2, Trash2, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { Heart, MessageCircle, Share2, Trash2, ChevronLeft, ChevronRight, ExternalLink, Copy, Check } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import PostComments from "./PostComments";
 
@@ -38,11 +39,10 @@ interface PostCardProps {
   isMuted: boolean;
   onMuteToggle: (muted: boolean) => void;
   onPostDeleted?: () => void;
+  isDetailView?: boolean;
 }
 
-
-
-const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }: PostCardProps) => {
+const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, isDetailView = false }: PostCardProps) => {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
@@ -50,12 +50,12 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
   const [pollOptions, setPollOptions] = useState<any[]>([]);
   const [userVote, setUserVote] = useState<string | null>(null);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [sharePopoverOpen, setSharePopoverOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const delete_api = import.meta.env.VITE_BACKEND_URL;
-
-
 
   useEffect(() => {
     fetchReactions();
@@ -66,7 +66,6 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
     }
   }, [post.id, currentUserId]);
 
-  // Auto-play video when in viewport
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -75,16 +74,14 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            // Video is in viewport - play
             video.play().catch(err => console.log('Autoplay prevented:', err));
           } else {
-            // Video is out of viewport - pause
             video.pause();
           }
         });
       },
       {
-        threshold: 0.5, // 50% of video must be visible
+        threshold: 0.5,
       }
     );
 
@@ -93,15 +90,13 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
     return () => {
       observer.disconnect();
     };
-  }, [currentMediaIndex]); // Re-run when media changes
+  }, [currentMediaIndex]);
 
-  // Listen for volume changes and sync mute state with parent
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleVolumeChange = () => {
-      // When user manually changes mute state via video controls
       if (video.muted !== isMuted) {
         onMuteToggle(video.muted);
       }
@@ -124,31 +119,35 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
     setLikeCount(data?.length || 0);
     setLiked(currentUserId ? data?.some((r) => r.user_id === currentUserId) || false : false);
   };
-  function decodeHtmlEntities(text: string) {
-      const txt = document.createElement("textarea");
-      txt.innerHTML = text;
-      return txt.value;
-    }
-     function linkify(text: string) {
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
 
-      return text.split(urlRegex).map((part, index) => {
-        if (part.match(urlRegex)) {
-          return (
-            <a
-              key={index}
-              href={part}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 underline break-all"
-            >
-              {part}
-            </a>
-          );
-        }
-        return part;
-      });
-    }
+  function decodeHtmlEntities(text: string) {
+    const txt = document.createElement("textarea");
+    txt.innerHTML = text;
+    return txt.value;
+  }
+
+  function linkify(text: string) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+    return text.split(urlRegex).map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline break-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  }
+
   const fetchCommentCount = async () => {
     const { data } = await supabase
       .from("comments")
@@ -160,7 +159,6 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
 
   const fetchPollData = async () => {
     const { data: options } = await supabase
-    // Fetch poll options
       .from("poll_options")
       .select("*")
       .eq("post_id", post.id);
@@ -192,14 +190,13 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
     }
   };
 
-  const handleLike = async () => {
-    //logged out users cannot like redirect to auth
-
+  const handleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
     if (!currentUserId) {
       navigate("/auth");
       return;
     }
-
     
     if (liked) {
       await supabase
@@ -220,12 +217,13 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
     fetchReactions();
   };
 
-  const handleVote = async (optionId: string) => {
-        if (!currentUserId) {
+  const handleVote = async (optionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!currentUserId) {
       navigate("/auth");
       return;
     }
-
     
     if (userVote) {
       toast({
@@ -260,9 +258,9 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
     }
   };
 
- const handleDelete = async (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
     if (!currentUserId || currentUserId !== post.user_id) return;
 
@@ -271,7 +269,6 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
         const mediaUrls = Array.isArray(post.media_url)
           ? post.media_url
           : [post.media_url];
-        
         
         await fetch(delete_api+'/delete-media', {
           method: "POST",
@@ -292,7 +289,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
         description: "Your post and media have been successfully deleted",
       });
 
-      onPostDeleted?.(); // removes post from UI without reload
+      onPostDeleted?.();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -302,50 +299,75 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
     }
   };
 
-  const handleShare = () => {
-  // Not logged in → redirect to auth
-  if (!currentUserId) {
-    navigate("/auth");
-    return;
-  }
-
-  const postUrl = `${window.location.origin}/post/${post.id}`;
-  const text = post.content
-    ? `${post.content.slice(0, 100)}...`
-    : "Check out this post";
+  const copyLink = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     
+    const postUrl = `${window.location.origin}/post/${post.id}`;
+    
+    try {
+      await navigator.clipboard.writeText(postUrl);
+      setLinkCopied(true);
+      toast({
+        title: "Link copied!",
+        description: "Post link copied to clipboard",
+      });
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => setLinkCopied(false), 2000);
+      
+      // Close popover after copying
+      setTimeout(() => setSharePopoverOpen(false), 1000);
+    } catch (error) {
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy link to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
-    `${text}\n\n${postUrl}`
-  )}`;
-
-  window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-};
-
-  const handleAvatarClick = () => {
+  const shareWhatsApp = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
     if (!currentUserId) {
-      // Not logged in, redirect to auth
+      navigate("/auth");
+      return;
+    }
+
+    const postUrl = `${window.location.origin}/post/${post.id}`;
+    const text = post.content
+      ? `${post.content.slice(0, 100)}...`
+      : "Check out this post";
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
+      `${text}\n\n${postUrl}`
+    )}`;
+
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    setSharePopoverOpen(false);
+  };
+
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!currentUserId) {
       window.location.href = "/auth";
       return;
     }
 
-    // If it's the current user's post, go to their profile
     if (currentUserId === post.user_id) {
       navigate("/profile");
     } else {
-      // Otherwise, go to the other user's profile
       navigate(`/user/${post.user_id}`);
     }
   };
 
-  // Helper function to determine if URL is video
   const isVideoUrl = (url: string): boolean => {
     const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
     const lowerUrl = url.toLowerCase();
     return videoExtensions.some(ext => lowerUrl.includes(ext));
   };
 
-  // Parse media_url to always be an array
   const getMediaUrls = (): string[] => {
     if (!post.media_url) return [];
     if (Array.isArray(post.media_url)) return post.media_url;
@@ -365,24 +387,25 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
   const hasMedia = mediaUrls.length > 0;
   const totalVotes = pollOptions.reduce((sum, opt) => sum + (opt.poll_votes?.[0]?.count || 0), 0);
 
-  // Carousel navigation functions
-  const nextMedia = () => {
+  const nextMedia = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setCurrentMediaIndex((prev) => (prev + 1) % mediaUrls.length);
   };
 
-  const prevMedia = () => {
+  const prevMedia = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setCurrentMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
   };
 
-  const goToMedia = (index: number) => {
+  const goToMedia = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
     setCurrentMediaIndex(index);
   };
 
   return (
     <Card className="px-3 animate-slide-up hover:shadow-md transition-shadow rounded-none">
       <div className="flex items-start gap-3 pt-3">
-        {/* Clickable Avatar */}
-        <div onClick={handleAvatarClick} className="cursor-pointer">
+        <div onClick={handleAvatarClick}>
           <Avatar className="h-8 w-8 hover:opacity-80 transition-opacity">
             {post.profiles.avatar_url ? (
               <img 
@@ -401,7 +424,6 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
 
         <div className="flex-1">
           <div className="flex items-center gap-1 text-sm">
-            {/* Clickable Username */}
             <span 
               className="font-semibold cursor-pointer hover:underline"
               onClick={handleAvatarClick}
@@ -421,16 +443,15 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
           </div>
         </div>
         {currentUserId === post.user_id && (
-         <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={(e) => handleDelete(e)}
-        className="text-destructive hover:text-destructive h-6 w-6 p-0"
-      >
-  <Trash2 className="h-3 w-3" />
-</Button>
-
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleDelete}
+            className="text-destructive hover:text-destructive h-6 w-6 p-0"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
         )}
       </div>
 
@@ -440,11 +461,8 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
         </p>
       )}
 
-    
-      {/* Media Carousel - Supports multiple images/videos */}
       {hasMedia && post.post_type !== "poll" && (
-        <div className="relative mb-2 pt-2 group">
-          {/* Main Media Display */}
+        <div className="relative mb-2 pt-2 group" onClick={(e) => e.stopPropagation()}>
           <div className="relative w-full">
             {isVideoUrl(mediaUrls[currentMediaIndex]) ? (
               <video
@@ -469,10 +487,8 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
               />
             )}
 
-            {/* Navigation Buttons - Only show if multiple media */}
             {mediaUrls.length > 1 && (
               <>
-                {/* Previous Button */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -482,7 +498,6 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
                   <ChevronLeft className="h-6 w-6" />
                 </Button>
 
-                {/* Next Button */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -492,7 +507,6 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
                   <ChevronRight className="h-6 w-6" />
                 </Button>
 
-                {/* Media Counter */}
                 <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
                   {currentMediaIndex + 1} / {mediaUrls.length}
                 </div>
@@ -500,13 +514,12 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
             )}
           </div>
 
-          {/* Carousel Indicators - Only show if multiple media */}
           {mediaUrls.length > 1 && (
             <div className="flex items-center justify-center gap-2 mt-2">
               {mediaUrls.map((_, index) => (
                 <button
                   key={index}
-                  onClick={() => goToMedia(index)}
+                  onClick={(e) => goToMedia(index, e)}
                   className={`h-2 rounded-full transition-all ${
                     index === currentMediaIndex
                       ? 'w-6 bg-primary'
@@ -520,15 +533,14 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
         </div>
       )}
 
-      {/* Link Preview Card */}
       {post.link_preview && (
         <a
           href={post.link_preview.url}
           target="_blank"
           rel="noopener noreferrer"
           className="block mb-2 border border-gray-200 rounded-xl overflow-hidden hover:bg-gray-50 transition-colors group"
+          onClick={(e) => e.stopPropagation()}
         >
-          {/* Preview Image */}
           {post.link_preview.image && (
             <div className="relative w-full bg-gray-100">
               <img
@@ -542,21 +554,17 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
             </div>
           )}
 
-          {/* Preview Content */}
           <div className="p-3">
-            {/* Title */}
             <h3 className="font-semibold text-sm line-clamp-2 mb-1 group-hover:underline">
               {post.link_preview.title}
             </h3>
 
-            {/* Description */}
             {post.link_preview.description && (
               <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
                 {post.link_preview.description}
               </p>
             )}
 
-            {/* Domain with external link icon */}
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <ExternalLink className="h-3 w-3" />
               <span>{post.link_preview.domain}</span>
@@ -565,9 +573,8 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
         </a>
       )}
 
-      {/* Poll */}
       {post.post_type === "poll" && pollOptions.length > 0 && (
-        <div className="space-y-2 mb-2 pt-2">
+        <div className="space-y-2 mb-2 pt-2" onClick={(e) => e.stopPropagation()}>
           {pollOptions.map((option) => {
             const voteCount = option.poll_votes?.[0]?.count || 0;
             const percentage = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
@@ -578,7 +585,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
                 key={option.id}
                 variant={isUserVote ? "default" : "outline"}
                 className="w-full justify-start relative overflow-hidden"
-                onClick={() => handleVote(option.id)}
+                onClick={(e) => handleVote(option.id, e)}
                 disabled={!!userVote}
               >
                 <div
@@ -604,7 +611,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
         </div>
       )}
 
-      <div className="flex items-center gap-3 pt-1 pb-1 border-t">
+      <div className="flex items-center gap-3 pt-1 pb-1 border-t" onClick={(e) => e.stopPropagation()}>
         <Button
           variant="ghost"
           size="sm"
@@ -617,7 +624,8 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             if (!currentUserId) {
               window.location.href = "/auth";
               return;
@@ -628,23 +636,66 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted }:
           <MessageCircle className="h-4 w-4 mr-1" />
           {commentCount}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleShare}
-        >
-          <Share2 className="h-4 w-4 mr-1" />
-          Share
-        </Button>
-
+        
+        <Popover open={sharePopoverOpen} onOpenChange={setSharePopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!currentUserId) {
+                  navigate("/auth");
+                  return;
+                }
+              }}
+            >
+              <Share2 className="h-4 w-4 mr-1" />
+              Share
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start"
+                onClick={copyLink}
+              >
+                {linkCopied ? (
+                  <>
+                    <Check className="h-4 w-4 mr-2 text-green-500" />
+                    <span className="text-green-500">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Link
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start"
+                onClick={shareWhatsApp}
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Share on WhatsApp
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {showComments && currentUserId && (
-        <PostComments
-          postId={post.id}
-          currentUserId={currentUserId}
-          onCommentAdded={fetchCommentCount}
-        />
+        <div onClick={(e) => e.stopPropagation()}>
+          <PostComments
+            postId={post.id}
+            currentUserId={currentUserId}
+            onCommentAdded={fetchCommentCount}
+          />
+        </div>
       )}
     </Card>
   );
