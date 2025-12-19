@@ -38,7 +38,7 @@ const PendingPosts = () => {
   const [posts, setPosts] = useState<TwitterPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(false); // Default: unmuted
+  const [isMuted, setIsMuted] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -47,7 +47,6 @@ const PendingPosts = () => {
     fetchPendingPosts();
   }, []);
 
-  // Load mute preference from localStorage on mount
   useEffect(() => {
     const savedMuteState = localStorage.getItem('videoMuted');
     if (savedMuteState !== null) {
@@ -55,7 +54,6 @@ const PendingPosts = () => {
     }
   }, []);
 
-  // Handle mute toggle from any video
   const handleMuteToggle = (muted: boolean) => {
     setIsMuted(muted);
     localStorage.setItem('videoMuted', String(muted));
@@ -96,6 +94,7 @@ const PendingPosts = () => {
         title: "Error",
         description: error.message || "Failed to fetch pending posts",
         variant: "destructive",
+        duration: 1000
       });
       console.error("Error fetching posts:", error);
     } finally {
@@ -107,7 +106,6 @@ const PendingPosts = () => {
     setProcessingId(post.twitter_unique_id);
 
     try {
-      // Update status in twitter_posts table
       const { error: updateError } = await (supabase as any)
         .from("twitter_posts")
         .update({ status: "accepted" })
@@ -115,7 +113,6 @@ const PendingPosts = () => {
 
       if (updateError) throw updateError;
 
-      // Prepare complete data for posts table
       const postData = {
         user_id: post.user_id,
         content: post.content,
@@ -125,10 +122,9 @@ const PendingPosts = () => {
         twitter_username: post.twitter_username,
         source: post.source,
         location: post.location,
-        link_preview: post.link_preview,  // NEW: Include link preview data
+        link_preview: post.link_preview,
       };
 
-      // Insert into posts table
       const { error: insertError } = await (supabase as any)
         .from("posts")
         .insert(postData);
@@ -138,9 +134,9 @@ const PendingPosts = () => {
       toast({
         title: "Post Accepted",
         description: "The post has been approved and published successfully.",
+        duration: 1000
       });
 
-      // Remove from local state
       setPosts((prev) =>
         prev.filter((p) => p.twitter_unique_id !== post.twitter_unique_id)
       );
@@ -150,6 +146,7 @@ const PendingPosts = () => {
         title: "Error",
         description: error.message || "Failed to accept the post.",
         variant: "destructive",
+        duration: 1000
       });
     } finally {
       setProcessingId(null);
@@ -170,6 +167,7 @@ const PendingPosts = () => {
       toast({
         title: "Post Rejected",
         description: "The post has been rejected.",
+        duration: 1000
       });
 
       setPosts((prev) =>
@@ -181,6 +179,7 @@ const PendingPosts = () => {
         title: "Error",
         description: error.message || "Failed to reject the post.",
         variant: "destructive",
+        duration: 1000
       });
     } finally {
       setProcessingId(null);
@@ -189,19 +188,18 @@ const PendingPosts = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
-      {/* Header - Similar to Feed */}
       <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-              <ArrowLeft className="h-5 w-5" />
+        <div className="container mx-auto px-2 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/admin")}>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Pending Posts Review
             </h1>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="text-sm">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
               {posts.length} Pending
             </Badge>
             <Button
@@ -209,47 +207,45 @@ const PendingPosts = () => {
               size="sm"
               onClick={fetchPendingPosts}
               disabled={loading}
+              className="h-7 text-xs"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Content - Similar to Feed layout */}
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="space-y-6">
+      <main className="container mx-auto px-2 py-2 max-w-2xl">
+        <div className="space-y-2">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-8">
               <div className="text-center">
-                <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-                <p className="text-muted-foreground">Loading pending posts...</p>
+                <RefreshCw className="h-6 w-6 animate-spin text-primary mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Loading pending posts...</p>
               </div>
             </div>
           ) : posts.length === 0 ? (
-            <Card className="p-12 text-center">
-              <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
-              <h2 className="text-xl font-semibold mb-2">All Caught Up!</h2>
-              <p className="text-muted-foreground mb-4">
+            <Card className="p-8 text-center">
+              <CheckCircle className="h-10 w-10 mx-auto mb-2 text-green-500" />
+              <h2 className="text-lg font-semibold mb-1">All Caught Up!</h2>
+              <p className="text-sm text-muted-foreground mb-3">
                 There are no pending posts to review at the moment.
               </p>
-              <Button onClick={fetchPendingPosts} variant="outline">
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <Button onClick={fetchPendingPosts} variant="outline" size="sm" className="h-7 text-xs">
+                <RefreshCw className="h-3 w-3 mr-1" />
                 Check Again
               </Button>
             </Card>
           ) : (
             <>
-              {/* Info Banner */}
-              <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
-                <p className="text-sm text-blue-900 dark:text-blue-100">
+              <Card className="p-3 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+                <p className="text-xs text-blue-900 dark:text-blue-100">
                   <strong>Review Mode:</strong> Carefully review each post before accepting or rejecting.
                   Accepted posts will be published to the main feed.
                 </p>
               </Card>
 
-              {/* Tweet Cards Feed */}
               {posts.map((post) => (
                 <TweetCard
                   key={post.twitter_unique_id}
