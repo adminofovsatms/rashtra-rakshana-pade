@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import { Send } from "lucide-react";
 
 interface Comment {
   id: string;
@@ -66,7 +67,8 @@ const PostComments = ({ postId, currentUserId, onCommentAdded }: PostCommentsPro
     setComments(data || []);
   };
 
-  const handleAddComment = async () => {
+  const handleAddComment = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!newComment.trim()) return;
 
     setLoading(true);
@@ -97,41 +99,60 @@ const PostComments = ({ postId, currentUserId, onCommentAdded }: PostCommentsPro
     }
   };
 
-  return (
-    <div className="mt-4 pt-4 border-t space-y-4">
-      <div className="space-y-3">
-        {comments.map((comment) => (
-          <div key={comment.id} className="flex gap-3">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="text-xs">
-                {comment.profiles.full_name?.[0] || "U"}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="bg-muted p-3 rounded-lg">
-                <p className="font-medium text-sm">{comment.profiles.full_name || "Anonymous"}</p>
-                <p className="text-sm">{comment.content}</p>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAddComment();
+    }
+  };
 
-      <div className="flex gap-2">
-        <Textarea
+  return (
+    <div className="mt-3 mb-3 pt-3 border-t space-y-3">
+      {/* Comments List */}
+      {comments.length > 0 && (
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {comments.map((comment) => (
+            <div key={comment.id} className="flex gap-2">
+              <Avatar className="h-7 w-7 flex-shrink-0">
+                <AvatarFallback className="text-xs">
+                  {comment.profiles.full_name?.[0] || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="bg-muted px-3 py-2 rounded-2xl inline-block max-w-full break-words">
+                  <p className="font-semibold text-xs leading-tight">
+                    {comment.profiles.full_name || "Anonymous"}
+                  </p>
+                  <p className="text-sm leading-snug mt-0.5">{comment.content}</p>
+                </div>
+                <p className="text-xs text-muted-foreground ml-3 mt-0.5">
+                  {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Comment Input */}
+      <form onSubmit={handleAddComment} className="flex items-center gap-2">
+        <Input
           placeholder="Write a comment..."
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
-          rows={2}
-          className="resize-none"
+          onKeyPress={handleKeyPress}
+          className="flex-1 rounded-full bg-muted border-0 h-9 px-4 text-sm"
+          disabled={loading}
         />
-        <Button onClick={handleAddComment} disabled={loading || !newComment.trim()}>
-          Post
+        <Button 
+          type="submit"
+          size="icon"
+          disabled={loading || !newComment.trim()}
+          className="h-9 w-9 rounded-full flex-shrink-0"
+        >
+          <Send className="h-4 w-4" />
         </Button>
-      </div>
+      </form>
     </div>
   );
 };
