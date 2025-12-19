@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, CheckCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, CheckCircle, RefreshCw, CheckCheck, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import TweetCard from "@/components/TweetCard";
 
@@ -38,6 +38,7 @@ const PendingPosts = () => {
   const [posts, setPosts] = useState<TwitterPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -186,6 +187,113 @@ const PendingPosts = () => {
     }
   };
 
+  const handleAcceptAll = async () => {
+    if (posts.length === 0) return;
+
+    setBulkProcessing(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (const post of posts) {
+        try {
+          // Update status to accepted
+          const { error: updateError } = await (supabase as any)
+            .from("twitter_posts")
+            .update({ status: "accepted" })
+            .eq("twitter_unique_id", post.twitter_unique_id);
+
+          if (updateError) throw updateError;
+
+          // Insert into posts table
+          const postData = {
+            user_id: post.user_id,
+            content: post.content,
+            post_type: post.post_type,
+            media_url: post.media_url,
+            twitter_unique_id: post.twitter_unique_id,
+            twitter_username: post.twitter_username,
+            source: post.source,
+            location: post.location,
+            link_preview: post.link_preview,
+          };
+
+          const { error: insertError } = await (supabase as any)
+            .from("posts")
+            .insert(postData);
+
+          if (insertError) throw insertError;
+
+          successCount++;
+        } catch (error) {
+          console.error(`Error accepting post ${post.twitter_unique_id}:`, error);
+          failCount++;
+        }
+      }
+
+      toast({
+        title: "Bulk Accept Complete",
+        description: `✅ ${successCount} accepted${failCount > 0 ? `, ❌ ${failCount} failed` : ''}`,
+        duration: 1000
+      });
+
+      // Refresh the list
+      fetchPendingPosts();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to accept all posts",
+        variant: "destructive",
+        duration: 1000
+      });
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  const handleRejectAll = async () => {
+    if (posts.length === 0) return;
+
+    setBulkProcessing(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (const post of posts) {
+        try {
+          const { error } = await (supabase as any)
+            .from("twitter_posts")
+            .update({ status: "rejected" })
+            .eq("twitter_unique_id", post.twitter_unique_id);
+
+          if (error) throw error;
+          successCount++;
+        } catch (error) {
+          console.error(`Error rejecting post ${post.twitter_unique_id}:`, error);
+          failCount++;
+        }
+      }
+
+      toast({
+        title: "Bulk Reject Complete",
+        description: `✅ ${successCount} rejected${failCount > 0 ? `, ❌ ${failCount} failed` : ''}`,
+        duration: 1000
+      });
+
+      // Refresh the list
+      fetchPendingPosts();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject all posts",
+        variant: "destructive",
+        duration: 1000
+      });
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
       <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
@@ -202,11 +310,35 @@ const PendingPosts = () => {
             <Badge variant="outline" className="text-xs">
               {posts.length} Pending
             </Badge>
+            {posts.length > 0 && (
+              <>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleAcceptAll}
+                  disabled={bulkProcessing || loading}
+                  className="h-7 text-xs"
+                >
+                  <CheckCheck className="h-3 w-3 mr-1" />
+                  Accept All
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleRejectAll}
+                  disabled={bulkProcessing || loading}
+                  className="h-7 text-xs"
+                >
+                  <XCircle className="h-3 w-3 mr-1" />
+                  Reject All
+                </Button>
+              </>
+            )}
             <Button
               variant="outline"
               size="sm"
               onClick={fetchPendingPosts}
-              disabled={loading}
+              disabled={loading || bulkProcessing}
               className="h-7 text-xs"
             >
               <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
@@ -218,11 +350,13 @@ const PendingPosts = () => {
 
       <main className="container mx-auto px-2 py-2 max-w-2xl">
         <div className="space-y-2">
-          {loading ? (
+          {loading || bulkProcessing ? (
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
                 <RefreshCw className="h-6 w-6 animate-spin text-primary mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Loading pending posts...</p>
+                <p className="text-sm text-muted-foreground">
+                  {bulkProcessing ? 'Processing all posts...' : 'Loading pending posts...'}
+                </p>
               </div>
             </div>
           ) : posts.length === 0 ? (
