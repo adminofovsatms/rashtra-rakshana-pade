@@ -64,12 +64,6 @@ const PostFeed = ({ userId }: PostFeedProps) => {
     }
   }, []);
 
-  // Handle mute toggle from any video
-  const handleMuteToggle = (muted: boolean) => {
-    setIsMuted(muted);
-    localStorage.setItem('videoMuted', String(muted));
-  };
-
   // Load mute preference from localStorage on mount
   useEffect(() => {
     const savedMuteState = localStorage.getItem('videoMuted');
