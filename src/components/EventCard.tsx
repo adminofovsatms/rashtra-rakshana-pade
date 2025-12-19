@@ -63,7 +63,8 @@ export const EventCard = ({ event, currentUserId, onEventDeleted }: EventCardPro
 
       toast({
         title: "Event deleted",
-        description: "The event has been successfully deleted"
+        description: "The event has been successfully deleted",
+        duration: 1000
       });
 
       if (onEventDeleted) {
@@ -73,7 +74,8 @@ export const EventCard = ({ event, currentUserId, onEventDeleted }: EventCardPro
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     }
   };

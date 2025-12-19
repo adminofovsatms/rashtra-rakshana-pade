@@ -103,6 +103,7 @@ export const ProtestCard = ({ protest, currentUserId }: ProtestCardProps) => {
         title: "Authentication Required",
         description: "Please sign in to respond to this protest",
         variant: "destructive",
+        duration: 1000
       });
       return;
     }
@@ -137,6 +138,7 @@ export const ProtestCard = ({ protest, currentUserId }: ProtestCardProps) => {
       toast({
         title: "Response Recorded",
         description: "Your response has been saved",
+        duration: 1000
       });
     } catch (error) {
       console.error("Error responding to protest:", error);
@@ -144,6 +146,7 @@ export const ProtestCard = ({ protest, currentUserId }: ProtestCardProps) => {
         title: "Error",
         description: "Failed to record your response",
         variant: "destructive",
+        duration: 1000
       });
     } finally {
       setIsSubmitting(false);

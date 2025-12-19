@@ -42,8 +42,21 @@ const UserProfile = () => {
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const savedMuteState = localStorage.getItem('videoMuted');
+    if (savedMuteState !== null) {
+      setIsMuted(savedMuteState === 'true');
+    }
+  }, []);
+
+  const handleMuteToggle = (muted: boolean) => {
+    setIsMuted(muted);
+    localStorage.setItem('videoMuted', String(muted));
+  };
 
   useEffect(() => {
     checkCurrentUser();
@@ -64,7 +77,6 @@ const UserProfile = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setCurrentUserId(user.id);
-      // If viewing own profile, redirect to /profile
       if (user.id === userId) {
         navigate("/profile");
         return;
@@ -86,7 +98,8 @@ const UserProfile = () => {
         toast({
           title: "User not found",
           description: "This user does not exist",
-          variant: "destructive"
+          variant: "destructive",
+          duration: 1000
         });
         navigate("/");
         return;
@@ -97,7 +110,8 @@ const UserProfile = () => {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       navigate("/");
     } finally {
@@ -129,7 +143,6 @@ const UserProfile = () => {
 
   const fetchFollowCounts = async () => {
     try {
-      // Get followers count (people following this user)
       const { count: followersCount, error: followersError } = await supabase
         .from("follows")
         .select("*", { count: "exact", head: true })
@@ -137,7 +150,6 @@ const UserProfile = () => {
 
       if (followersError) throw followersError;
 
-      // Get following count (people this user follows)
       const { count: followingCount, error: followingError } = await supabase
         .from("follows")
         .select("*", { count: "exact", head: true })
@@ -162,7 +174,6 @@ const UserProfile = () => {
         .single();
 
       if (error && error.code !== "PGRST116") {
-        // PGRST116 is "not found" error, which is fine
         throw error;
       }
 
@@ -195,13 +206,15 @@ const UserProfile = () => {
 
       toast({
         title: "Following",
-        description: `You are now following ${profile?.full_name || "this user"}`
+        description: `You are now following ${profile?.full_name || "this user"}`,
+        duration: 1000
       });
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setFollowLoading(false);
@@ -230,13 +243,15 @@ const UserProfile = () => {
 
       toast({
         title: "Unfollowed",
-        description: `You have unfollowed ${profile?.full_name || "this user"}`
+        description: `You have unfollowed ${profile?.full_name || "this user"}`,
+        duration: 1000
       });
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setFollowLoading(false);
@@ -274,91 +289,78 @@ const UserProfile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
-      {/* Header */}
       <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-5 w-5" />
+        <div className="container mx-auto px-2 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               {profile.full_name || "User Profile"}
             </h1>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="space-y-6">
-          {/* Profile Info Card */}
-          <Card className="p-6">
-            <div className="flex items-start gap-4">
-              <Avatar className="h-20 w-20">
+      <main className="container mx-auto px-2 py-2 max-w-2xl">
+        <div className="space-y-2">
+          <Card className="p-3">
+            <div className="flex items-start gap-2">
+              <Avatar className="h-14 w-14 flex-shrink-0">
                 {profile.avatar_url ? (
                   <AvatarImage src={profile.avatar_url} alt={profile.full_name || "User"} />
                 ) : null}
-                <AvatarFallback className="text-2xl">
+                <AvatarFallback className="text-lg">
                   {profile.full_name?.[0]?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
               
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-2xl font-bold">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-lg font-bold truncate">
                     {profile.full_name || "Anonymous"}
                   </h2>
-                  <Badge variant={getRoleBadgeVariant(profile.role)}>
+                  <Badge variant={getRoleBadgeVariant(profile.role)} className="text-xs">
                     {formatRole(profile.role)}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground mb-3">
+                <p className="text-xs text-muted-foreground mb-2">
                   Member since {new Date(profile.created_at).toLocaleDateString()}
                 </p>
 
-                {/* Follower/Following Stats */}
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="text-sm">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="text-xs">
                     <span className="font-bold">{followersCount}</span>{" "}
                     <span className="text-muted-foreground">
                       {followersCount === 1 ? "Follower" : "Followers"}
                     </span>
                   </div>
-                  <div className="text-sm">
+                  <div className="text-xs">
                     <span className="font-bold">{followingCount}</span>{" "}
                     <span className="text-muted-foreground">Following</span>
                   </div>
                 </div>
                 
-                {/* Bio Section */}
                 {profile.bio && (
-                  <div className="mt-3 pt-3 border-t">
-                    <p className="text-sm text-foreground whitespace-pre-wrap">
+                  <div className="mt-2 pt-2 border-t">
+                    <p className="text-xs text-foreground whitespace-pre-wrap">
                       {profile.bio}
                     </p>
                   </div>
                 )}
-                {!profile.bio && (
-                  <div className="mt-3 pt-3 border-t">
-                    <p className="text-sm text-muted-foreground italic">
-                      No bio yet
-                    </p>
-                  </div>
-                )}
 
-                {/* Follow/Unfollow Button */}
                 {currentUserId && (
-                  <div className="mt-4 pt-4 border-t">
+                  <div className="mt-2 pt-2 border-t">
                     {isFollowing ? (
                       <Button 
-                        className="w-full" 
+                        className="w-full h-8 text-xs" 
                         variant="outline"
                         onClick={handleUnfollow}
                         disabled={followLoading}
                       >
                         {followLoading ? (
                           <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                             Unfollowing...
                           </>
                         ) : (
@@ -367,14 +369,14 @@ const UserProfile = () => {
                       </Button>
                     ) : (
                       <Button 
-                        className="w-full" 
+                        className="w-full h-8 text-xs" 
                         variant="default"
                         onClick={handleFollow}
                         disabled={followLoading}
                       >
                         {followLoading ? (
                           <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                             Following...
                           </>
                         ) : (
@@ -388,28 +390,29 @@ const UserProfile = () => {
             </div>
           </Card>
 
-          {/* Posts Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-semibold">Posts</h3>
-              <Badge variant="secondary">{posts.length} posts</Badge>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-base font-semibold">Posts</h3>
+              <Badge variant="secondary" className="text-xs">{posts.length}</Badge>
             </div>
 
             {posts.length === 0 ? (
-              <Card className="p-12 text-center">
-                <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">No Posts Yet</h3>
-                <p className="text-muted-foreground">
+              <Card className="p-8 text-center">
+                <User className="h-10 w-10 mx-auto mb-2 text-muted-foreground opacity-50" />
+                <h3 className="text-sm font-semibold mb-1">No Posts Yet</h3>
+                <p className="text-xs text-muted-foreground">
                   This user hasn't created any posts yet
                 </p>
               </Card>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-2">
                 {posts.map((post) => (
                   <PostCard
                     key={post.id}
                     post={post}
                     currentUserId={currentUserId || undefined}
+                    isMuted={isMuted}
+                    onMuteToggle={handleMuteToggle}
                     onPostDeleted={fetchUserPosts}
                   />
                 ))}

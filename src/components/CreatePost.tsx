@@ -126,7 +126,8 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
         toast({
           title: "Invalid file type",
           description: `Please upload a ${postType} file`,
-          variant: "destructive"
+          variant: "destructive",
+          duration: 1000
         });
       }
     }
@@ -187,7 +188,9 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
       toast({
         title: "Content required",
         description: "Please enter some content for your post",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
+        
       });
       return;
     }
@@ -196,7 +199,8 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
       toast({
         title: "Media required",
         description: `Please upload a ${postType} file`,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       return;
     }
@@ -205,7 +209,8 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
       toast({
         title: "Poll options required",
         description: "Please provide at least 2 poll options",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       return;
     }
@@ -256,7 +261,8 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
 
       toast({
         title: "Post created!",
-        description: "Your post has been shared with Hindu Unity"
+        description: "Your post has been shared with Hindu Unity",
+        duration: 1000
       });
 
       setContent("");
@@ -269,7 +275,8 @@ const CreatePost = ({ userId, userRole }: CreatePostProps) => {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setLoading(false);

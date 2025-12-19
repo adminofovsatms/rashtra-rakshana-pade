@@ -192,7 +192,8 @@ const PostFeed = ({ userId }: PostFeedProps) => {
       toast({
         title: "Error loading feed",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setLoading(false);

@@ -53,7 +53,8 @@ const Feed = () => {
         toast({
           title: "Account Suspended",
           description: "Your account has been suspended by an administrator",
-          variant: "destructive"
+          variant: "destructive",
+          duration: 1000
         });
         await supabase.auth.signOut();
         return;
@@ -63,14 +64,16 @@ const Feed = () => {
         toast({
           title: "Pending Approval",
           description: "Your account is awaiting admin approval",
-          variant: "default"
+          variant: "default",
+          duration: 1000
         });
       }
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setLoading(false);
@@ -86,7 +89,8 @@ const Feed = () => {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     }
   };
@@ -102,43 +106,42 @@ const Feed = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
       <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+        <div className="container mx-auto px-2 py-2 flex items-center justify-between">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Hindu Unity
           </h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {(isVolunteer || isExecutive || isSuperAdmin || isMember) && (
-              <Button onClick={() => navigate("/events")} variant="outline">
+              <Button onClick={() => navigate("/events")} variant="outline" size="sm">
                 Events
               </Button>
             )}
             {isExecutive && (
-              <Button onClick={() => navigate("/manage-users")} variant="outline">
+              <Button onClick={() => navigate("/manage-users")} variant="outline" size="sm">
                 Dashboard
               </Button>
             )}
             {isSuperAdmin && (
               <>
-                <Button onClick={() => navigate("/manage-users")} variant="outline">
+                <Button onClick={() => navigate("/manage-users")} variant="outline" size="sm">
                   Manage Users
                 </Button>
-                <Button onClick={() => navigate("/admin")} variant="outline">
+                <Button onClick={() => navigate("/admin")} variant="outline" size="sm">
                   Super Admin
                 </Button>
               </>
             )}
             {session ? (
               <>
-                <Button onClick={() => navigate("/profile")} variant="outline">
+                <Button onClick={() => navigate("/profile")} variant="outline" size="sm">
                   Profile
                 </Button>
-                <Button onClick={handleLogout} variant="ghost" size="icon">
-                  
-                  <LogOut className="h-5 w-5" />
+                <Button onClick={handleLogout} variant="ghost" size="icon" className="h-8 w-8">
+                  <LogOut className="h-4 w-4" />
                 </Button>
               </>
             ) : (
-              <Button onClick={() => navigate("/auth")} variant="default">
+              <Button onClick={() => navigate("/auth")} variant="default" size="sm">
                 Login
               </Button>
             )}
@@ -146,14 +149,14 @@ const Feed = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="space-y-6">
+      <main className="container mx-auto px-2 py-2 max-w-2xl">
+        <div className="space-y-2">
           {session ? (
             <CreatePost userId={session.user.id} userRole={isVolunteer || isExecutive || isSuperAdmin ? "volunteer" : "member"} />
           ) : (
-            <div className="bg-card p-6 rounded-lg border text-center">
-              <p className="text-muted-foreground mb-4">Sign in to create posts and interact with Hindu Unity</p>
-              <Button onClick={() => navigate("/auth")}>Sign In</Button>
+            <div className="bg-card p-3 rounded-lg border text-center">
+              <p className="text-muted-foreground text-sm mb-2">Sign in to create posts and interact</p>
+              <Button onClick={() => navigate("/auth")} size="sm">Sign In</Button>
             </div>
           )}
           <PostFeed userId={session?.user.id} />

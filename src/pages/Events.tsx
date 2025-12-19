@@ -84,7 +84,8 @@ const Events = () => {
       toast({
         title: "Missing information",
         description: "Please provide at least a title and date",
-        variant: "destructive"
+        variant: "destructive",
+        
       });
       return;
     }

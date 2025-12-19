@@ -58,7 +58,8 @@ const Auth = () => {
     toast({
       title: "Passwords don't match",
       description: "Please make sure both passwords are identical",
-      variant: "destructive"
+      variant: "destructive",
+      duration: 1000
     });
     return;
   }
@@ -91,14 +92,16 @@ const Auth = () => {
         toast({
           title: "Access Denied",
           description: "Your account is not approved yet.",
-          variant: "destructive"
+          variant: "destructive",
+          duration: 1000
         });
         return;
       }
 
       toast({
         title: "Welcome back!",
-        description: "Successfully logged in"
+        description: "Successfully logged in",
+        duration: 1000
       });
 
       navigate("/");
@@ -123,7 +126,8 @@ const Auth = () => {
     toast({
       title: "Error",
       description: error.message,
-      variant: "destructive"
+      variant: "destructive",
+      duration: 1000
     });
   } finally {
     setLoading(false);

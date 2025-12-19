@@ -86,13 +86,15 @@ const PostComments = ({ postId, currentUserId, onCommentAdded }: PostCommentsPro
       
       toast({
         title: "Comment added",
-        description: "Your comment has been posted"
+        description: "Your comment has been posted",
+        duration: 1000
       });
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setLoading(false);

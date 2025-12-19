@@ -229,7 +229,8 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
       toast({
         title: "Already voted",
         description: "You've already voted in this poll",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       return;
     }
@@ -247,13 +248,15 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
       
       toast({
         title: "Vote recorded",
-        description: "Thank you for voting!"
+        description: "Thank you for voting!",
+        duration: 1000
       });
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     }
   };
@@ -287,7 +290,9 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
       toast({
         title: "Post deleted",
         description: "Your post and media have been successfully deleted",
+        duration: 1000
       });
+
 
       onPostDeleted?.();
     } catch (error: any) {
@@ -295,6 +300,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
         title: "Error",
         description: error.message,
         variant: "destructive",
+        duration: 1000
       });
     }
   };
@@ -310,6 +316,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
       toast({
         title: "Link copied!",
         description: "Post link copied to clipboard",
+        duration: 1000
       });
       
       // Reset copied state after 2 seconds
@@ -322,6 +329,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
         title: "Failed to copy",
         description: "Could not copy link to clipboard",
         variant: "destructive",
+        duration: 1000
       });
     }
   };

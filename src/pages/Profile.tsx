@@ -11,14 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, User, KeyRound, Loader2, CheckCircle, Camera, Settings, UserCog, FileText, X } from "lucide-react";
+import { ArrowLeft, User, KeyRound, Loader2, CheckCircle, Camera, Settings, UserCog, FileText } from "lucide-react";
 import PostCard from "@/components/PostCard";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -84,10 +83,23 @@ const Profile = () => {
   const [followingList, setFollowingList] = useState<FollowUser[]>([]);
   const [followersLoading, setFollowersLoading] = useState(false);
   const [followingLoading, setFollowingLoading] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const presignedUrlApi = import.meta.env.VITE_BACKEND_URL+'/api/get-avatar-upload-url';
+
+  useEffect(() => {
+    const savedMuteState = localStorage.getItem('videoMuted');
+    if (savedMuteState !== null) {
+      setIsMuted(savedMuteState === 'true');
+    }
+  }, []);
+
+  const handleMuteToggle = (muted: boolean) => {
+    setIsMuted(muted);
+    localStorage.setItem('videoMuted', String(muted));
+  };
     
   useEffect(() => {
     fetchProfile();
@@ -125,7 +137,8 @@ const Profile = () => {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setLoading(false);
@@ -162,7 +175,6 @@ const Profile = () => {
     try {
       if (!profile?.id) return;
 
-      // Get followers count (people following me)
       const { count: followersCount, error: followersError } = await supabase
         .from("follows" as any)
         .select("*", { count: "exact", head: true })
@@ -170,7 +182,6 @@ const Profile = () => {
 
       if (followersError) throw followersError;
 
-      // Get following count (people I follow)
       const { count: followingCount, error: followingError } = await supabase
         .from("follows" as any)
         .select("*", { count: "exact", head: true })
@@ -190,7 +201,6 @@ const Profile = () => {
     
     setFollowersLoading(true);
     try {
-      // Get followers with their profile info
       const { data, error } = await supabase
         .from("follows" as any)
         .select(`
@@ -206,14 +216,14 @@ const Profile = () => {
 
       if (error) throw error;
 
-      // Extract profile data from nested structure
       const followers = data?.map((item: any) => item.profiles).filter(Boolean) || [];
       setFollowersList(followers);
     } catch (error: any) {
       toast({
         title: "Error",
         description: "Failed to load followers",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setFollowersLoading(false);
@@ -225,7 +235,6 @@ const Profile = () => {
     
     setFollowingLoading(true);
     try {
-      // Get following with their profile info
       const { data, error } = await supabase
         .from("follows" as any)
         .select(`
@@ -241,14 +250,14 @@ const Profile = () => {
 
       if (error) throw error;
 
-      // Extract profile data from nested structure
       const following = data?.map((item: any) => item.profiles).filter(Boolean) || [];
       setFollowingList(following);
     } catch (error: any) {
       toast({
         title: "Error",
         description: "Failed to load following",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setFollowingLoading(false);
@@ -267,7 +276,6 @@ const Profile = () => {
 
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
-      // Step 1: Get presigned URL from backend
       const response = await fetch(presignedUrlApi, {
         method: 'POST',
         headers: {
@@ -287,7 +295,6 @@ const Profile = () => {
 
       const { upload_url, public_url } = await response.json();
 
-      // Step 2: Upload file directly to S3 using presigned URL
       const uploadResponse = await fetch(upload_url, {
         method: 'PUT',
         headers: {
@@ -300,7 +307,6 @@ const Profile = () => {
         throw new Error('Failed to upload file');
       }
 
-      // Step 3: Return public URL for database
       return public_url;
 
     } catch (error) {
@@ -313,22 +319,22 @@ const Profile = () => {
     const file = event.target.files?.[0];
     if (!file || !profile) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
         title: "Invalid file type",
         description: "Please upload an image file",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
         description: "Please upload an image smaller than 5MB",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       return;
     }
@@ -336,14 +342,12 @@ const Profile = () => {
     setAvatarUploading(true);
 
     try {
-      // Upload to S3
       const avatarUrl = await uploadFile(file);
 
       if (!avatarUrl) {
         throw new Error("Failed to get avatar URL");
       }
 
-      // Update profile in Supabase
       const { error } = await supabase
         .from("profiles")
         .update({ avatar_url: avatarUrl })
@@ -351,7 +355,6 @@ const Profile = () => {
 
       if (error) throw error;
 
-      // Update local state
       setProfile({
         ...profile,
         avatar_url: avatarUrl
@@ -359,18 +362,19 @@ const Profile = () => {
 
       toast({
         title: "Avatar updated",
-        description: "Your profile picture has been updated successfully"
+        description: "Your profile picture has been updated successfully",
+        duration: 1000
       });
     } catch (error: any) {
       console.error("Error uploading avatar:", error);
       toast({
         title: "Upload failed",
         description: error.message || "Failed to upload avatar",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setAvatarUploading(false);
-      // Reset input
       event.target.value = '';
     }
   };
@@ -378,22 +382,22 @@ const Profile = () => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate passwords match
     if (newPassword !== confirmPassword) {
       toast({
         title: "Passwords don't match",
         description: "Please make sure both passwords are identical",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       return;
     }
 
-    // Validate password length
     if (newPassword.length < 6) {
       toast({
         title: "Password too short",
         description: "Password must be at least 6 characters long",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       return;
     }
@@ -401,7 +405,6 @@ const Profile = () => {
     setPasswordLoading(true);
 
     try {
-      // First, verify current password by attempting to sign in
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) throw new Error("User email not found");
 
@@ -414,7 +417,6 @@ const Profile = () => {
         throw new Error("Current password is incorrect");
       }
 
-      // If current password is correct, update to new password
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -423,10 +425,10 @@ const Profile = () => {
 
       toast({
         title: "Password Updated",
-        description: "Your password has been successfully changed"
+        description: "Your password has been successfully changed",
+        duration: 1000
       });
 
-      // Reset form and close dialog
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -435,7 +437,8 @@ const Profile = () => {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setPasswordLoading(false);
@@ -445,12 +448,12 @@ const Profile = () => {
   const handleChangeUsername = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate username
     if (!newUsername.trim()) {
       toast({
         title: "Invalid username",
         description: "Username cannot be empty",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       return;
     }
@@ -459,7 +462,8 @@ const Profile = () => {
       toast({
         title: "Username too short",
         description: "Username must be at least 2 characters long",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       return;
     }
@@ -469,7 +473,6 @@ const Profile = () => {
     try {
       if (!profile) throw new Error("Profile not found");
 
-      // Update username in profiles table
       const { error } = await supabase
         .from("profiles")
         .update({ full_name: newUsername.trim() })
@@ -477,7 +480,6 @@ const Profile = () => {
 
       if (error) throw error;
 
-      // Update local state
       setProfile({
         ...profile,
         full_name: newUsername.trim()
@@ -485,17 +487,18 @@ const Profile = () => {
 
       toast({
         title: "Username Updated",
-        description: "Your username has been successfully changed"
+        description: "Your username has been successfully changed",
+        duration: 1000
       });
 
-      // Reset form and close dialog
       setNewUsername("");
       setIsUsernameDialogOpen(false);
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setUsernameLoading(false);
@@ -505,12 +508,12 @@ const Profile = () => {
   const handleEditBio = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate bio length
     if (newBio.length > 500) {
       toast({
         title: "Bio too long",
         description: "Bio must be 500 characters or less",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
       return;
     }
@@ -520,7 +523,6 @@ const Profile = () => {
     try {
       if (!profile) throw new Error("Profile not found");
 
-      // Update bio in profiles table
       const { error } = await supabase
         .from("profiles")
         .update({ bio: newBio.trim() || null })
@@ -528,7 +530,6 @@ const Profile = () => {
 
       if (error) throw error;
 
-      // Update local state
       setProfile({
         ...profile,
         bio: newBio.trim() || null
@@ -536,17 +537,18 @@ const Profile = () => {
 
       toast({
         title: "Bio Updated",
-        description: "Your bio has been successfully updated"
+        description: "Your bio has been successfully updated",
+        duration: 1000
       });
 
-      // Reset form and close dialog
       setNewBio("");
       setIsBioDialogOpen(false);
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 1000
       });
     } finally {
       setBioLoading(false);
@@ -584,38 +586,36 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
-      {/* Header */}
       <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <ArrowLeft className="h-5 w-5" />
+        <div className="container mx-auto px-2 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Profile
             </h1>
           </div>
           
-          {/* Settings Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Settings className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Settings className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Account Settings</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel className="text-xs">Account Settings</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setIsUsernameDialogOpen(true)}>
-                <UserCog className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => setIsUsernameDialogOpen(true)} className="text-xs">
+                <UserCog className="h-3 w-3 mr-2" />
                 Change Username
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsBioDialogOpen(true)}>
-                <FileText className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => setIsBioDialogOpen(true)} className="text-xs">
+                <FileText className="h-3 w-3 mr-2" />
                 Edit Bio
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsPasswordDialogOpen(true)}>
-                <KeyRound className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => setIsPasswordDialogOpen(true)} className="text-xs">
+                <KeyRound className="h-3 w-3 mr-2" />
                 Change Password
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -625,24 +625,25 @@ const Profile = () => {
 
       {/* Change Password Dialog */}
       <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Change Password</DialogTitle>
+            <DialogTitle className="text-base">Change Password</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
+          <form onSubmit={handleChangePassword} className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="currentPassword" className="text-xs">Current Password</Label>
               <Input
                 id="currentPassword"
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
+                className="h-8 text-sm"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
+            <div className="space-y-1">
+              <Label htmlFor="newPassword" className="text-xs">New Password</Label>
               <Input
                 id="newPassword"
                 type="password"
@@ -650,14 +651,15 @@ const Profile = () => {
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
                 minLength={6}
+                className="h-8 text-sm"
               />
               <p className="text-xs text-muted-foreground">
                 Must be at least 6 characters long
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+            <div className="space-y-1">
+              <Label htmlFor="confirmPassword" className="text-xs">Confirm New Password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -665,12 +667,13 @@ const Profile = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 minLength={6}
+                className="h-8 text-sm"
               />
               {confirmPassword && newPassword !== confirmPassword && (
-                <p className="text-sm text-destructive">Passwords do not match</p>
+                <p className="text-xs text-destructive">Passwords do not match</p>
               )}
               {confirmPassword && newPassword === confirmPassword && (
-                <p className="text-sm text-green-600 flex items-center gap-1">
+                <p className="text-xs text-green-600 flex items-center gap-1">
                   <CheckCircle className="h-3 w-3" />
                   Passwords match
                 </p>
@@ -679,12 +682,12 @@ const Profile = () => {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-8 text-xs"
               disabled={passwordLoading || newPassword !== confirmPassword}
             >
               {passwordLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                   Updating...
                 </>
               ) : (
@@ -697,24 +700,24 @@ const Profile = () => {
 
       {/* Change Username Dialog */}
       <Dialog open={isUsernameDialogOpen} onOpenChange={setIsUsernameDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Change Username</DialogTitle>
+            <DialogTitle className="text-base">Change Username</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleChangeUsername} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentUsername">Current Username</Label>
+          <form onSubmit={handleChangeUsername} className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="currentUsername" className="text-xs">Current Username</Label>
               <Input
                 id="currentUsername"
                 type="text"
                 value={profile.full_name || ""}
                 disabled
-                className="bg-muted"
+                className="bg-muted h-8 text-sm"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="newUsername">New Username</Label>
+            <div className="space-y-1">
+              <Label htmlFor="newUsername" className="text-xs">New Username</Label>
               <Input
                 id="newUsername"
                 type="text"
@@ -723,6 +726,7 @@ const Profile = () => {
                 required
                 minLength={2}
                 placeholder="Enter new username"
+                className="h-8 text-sm"
               />
               <p className="text-xs text-muted-foreground">
                 Must be at least 2 characters long
@@ -731,12 +735,12 @@ const Profile = () => {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-8 text-xs"
               disabled={usernameLoading || !newUsername.trim()}
             >
               {usernameLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                   Updating...
                 </>
               ) : (
@@ -749,31 +753,32 @@ const Profile = () => {
 
       {/* Edit Bio Dialog */}
       <Dialog open={isBioDialogOpen} onOpenChange={setIsBioDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Edit Bio</DialogTitle>
+            <DialogTitle className="text-base">Edit Bio</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleEditBio} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentBio">Current Bio</Label>
+          <form onSubmit={handleEditBio} className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="currentBio" className="text-xs">Current Bio</Label>
               <Textarea
                 id="currentBio"
                 value={profile.bio || "No bio yet"}
                 disabled
-                className="bg-muted resize-none"
-                rows={3}
+                className="bg-muted resize-none text-sm"
+                rows={2}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="newBio">New Bio</Label>
+            <div className="space-y-1">
+              <Label htmlFor="newBio" className="text-xs">New Bio</Label>
               <Textarea
                 id="newBio"
                 value={newBio}
                 onChange={(e) => setNewBio(e.target.value)}
                 placeholder="Tell us about yourself..."
-                rows={4}
+                rows={3}
                 maxLength={500}
+                className="text-sm"
               />
               <p className="text-xs text-muted-foreground">
                 {newBio.length}/500 characters
@@ -782,12 +787,12 @@ const Profile = () => {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-8 text-xs"
               disabled={bioLoading}
             >
               {bioLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                   Updating...
                 </>
               ) : (
@@ -800,44 +805,44 @@ const Profile = () => {
 
       {/* Followers List Dialog */}
       <Dialog open={isFollowersDialogOpen} onOpenChange={setIsFollowersDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Followers</DialogTitle>
+            <DialogTitle className="text-base">Followers</DialogTitle>
           </DialogHeader>
-          <div className="h-96">
+          <div className="h-80">
             {followersLoading ? (
               <div className="flex justify-center items-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : followersList.length === 0 ? (
               <div className="flex justify-center items-center h-full text-center text-muted-foreground">
-                <p>No followers yet</p>
+                <p className="text-sm">No followers yet</p>
               </div>
             ) : (
-              <div className="space-y-2 h-full overflow-y-auto pr-2">
+              <div className="space-y-1 h-full overflow-y-auto pr-1">
                 {followersList.map((follower) => (
                   <div
                     key={follower.id}
-                    className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border-b-2 border-transparent hover:border-blue-500"
+                    className="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all border-b border-transparent hover:border-blue-500"
                     onClick={() => {
                       navigate(`/user/${follower.id}`);
                       setIsFollowersDialogOpen(false);
                     }}
                   >
-                    <Avatar className="h-12 w-12">
+                    <Avatar className="h-10 w-10">
                       {follower.avatar_url ? (
                         <AvatarImage src={follower.avatar_url} alt={follower.full_name || "User"} />
                       ) : null}
-                      <AvatarFallback>
+                      <AvatarFallback className="text-xs">
                         {follower.full_name?.[0]?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">
+                      <p className="text-sm font-semibold truncate">
                         {follower.full_name || "Anonymous"}
                       </p>
                       {follower.bio && (
-                        <p className="text-sm text-muted-foreground truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {follower.bio}
                         </p>
                       )}
@@ -852,44 +857,44 @@ const Profile = () => {
 
       {/* Following List Dialog */}
       <Dialog open={isFollowingDialogOpen} onOpenChange={setIsFollowingDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Following</DialogTitle>
+            <DialogTitle className="text-base">Following</DialogTitle>
           </DialogHeader>
-          <div className="h-96">
+          <div className="h-80">
             {followingLoading ? (
               <div className="flex justify-center items-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : followingList.length === 0 ? (
               <div className="flex justify-center items-center h-full text-center text-muted-foreground">
-                <p>Not following anyone yet</p>
+                <p className="text-sm">Not following anyone yet</p>
               </div>
             ) : (
-              <div className="space-y-2 h-full overflow-y-auto pr-2">
+              <div className="space-y-1 h-full overflow-y-auto pr-1">
                 {followingList.map((following) => (
                   <div
                     key={following.id}
-                    className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border-b-2 border-transparent hover:border-blue-500"
+                    className="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all border-b border-transparent hover:border-blue-500"
                     onClick={() => {
                       navigate(`/user/${following.id}`);
                       setIsFollowingDialogOpen(false);
                     }}
                   >
-                    <Avatar className="h-12 w-12">
+                    <Avatar className="h-10 w-10">
                       {following.avatar_url ? (
                         <AvatarImage src={following.avatar_url} alt={following.full_name || "User"} />
                       ) : null}
-                      <AvatarFallback>
+                      <AvatarFallback className="text-xs">
                         {following.full_name?.[0]?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">
+                      <p className="text-sm font-semibold truncate">
                         {following.full_name || "Anonymous"}
                       </p>
                       {following.bio && (
-                        <p className="text-sm text-muted-foreground truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {following.bio}
                         </p>
                       )}
@@ -903,29 +908,27 @@ const Profile = () => {
       </Dialog>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="space-y-6">
-          {/* Profile Info Card */}
-          <Card className="p-6">
-            <div className="flex items-start gap-4">
+      <main className="container mx-auto px-2 py-2 max-w-2xl">
+        <div className="space-y-2">
+          <Card className="p-3">
+            <div className="flex items-start gap-2">
               <div className="relative">
-                <Avatar className="h-20 w-20">
+                <Avatar className="h-14 w-14">
                   {profile.avatar_url ? (
                     <AvatarImage src={profile.avatar_url} alt={profile.full_name || "User"} />
                   ) : null}
-                  <AvatarFallback className="text-2xl">
+                  <AvatarFallback className="text-lg">
                     {profile.full_name?.[0] || profile.email[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                {/* Avatar Upload Button */}
                 <label
                   htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 p-1 rounded-full bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90 transition-colors"
+                  className="absolute bottom-0 right-0 p-0.5 rounded-full bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90 transition-colors"
                 >
                   {avatarUploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
-                    <Camera className="h-4 w-4" />
+                    <Camera className="h-3 w-3" />
                   )}
                 </label>
                 <input
@@ -937,25 +940,24 @@ const Profile = () => {
                   className="hidden"
                 />
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-2xl font-bold">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-lg font-bold truncate">
                     {profile.full_name || "Anonymous"}
                   </h2>
-                  <Badge variant={getRoleBadgeVariant(profile.role)}>
+                  <Badge variant={getRoleBadgeVariant(profile.role)} className="text-xs">
                     {formatRole(profile.role)}
                   </Badge>
                 </div>
-                <p className="text-muted-foreground mb-1">{profile.email}</p>
-                <p className="text-sm text-muted-foreground mb-3">
+                <p className="text-muted-foreground text-xs mb-0.5">{profile.email}</p>
+                <p className="text-xs text-muted-foreground mb-2">
                   Member since {new Date(profile.created_at).toLocaleDateString()}
                 </p>
 
-                {/* Follower/Following Stats - Clickable */}
-                <div className="flex items-center gap-4 mb-3">
+                <div className="flex items-center gap-3 mb-2">
                   <button
                     onClick={handleOpenFollowers}
-                    className="text-sm hover:underline cursor-pointer"
+                    className="text-xs hover:underline cursor-pointer"
                   >
                     <span className="font-bold">{followersCount}</span>{" "}
                     <span className="text-muted-foreground">
@@ -964,7 +966,7 @@ const Profile = () => {
                   </button>
                   <button
                     onClick={handleOpenFollowing}
-                    className="text-sm hover:underline cursor-pointer"
+                    className="text-xs hover:underline cursor-pointer"
                   >
                     <span className="font-bold">{followingCount}</span>{" "}
                     <span className="text-muted-foreground">Following</span>
@@ -972,15 +974,15 @@ const Profile = () => {
                 </div>
 
                 {profile.bio && (
-                  <div className="mt-3 pt-3 border-t">
-                    <p className="text-sm text-foreground whitespace-pre-wrap">
+                  <div className="mt-2 pt-2 border-t">
+                    <p className="text-xs text-foreground whitespace-pre-wrap">
                       {profile.bio}
                     </p>
                   </div>
                 )}
                 {!profile.bio && (
-                  <div className="mt-3 pt-3 border-t">
-                    <p className="text-sm text-muted-foreground italic">
+                  <div className="mt-2 pt-2 border-t">
+                    <p className="text-xs text-muted-foreground italic">
                       No bio yet. Click the settings icon to add one!
                     </p>
                   </div>
@@ -989,31 +991,32 @@ const Profile = () => {
             </div>
           </Card>
 
-          {/* Posts Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-semibold">Your Posts</h3>
-              <Badge variant="secondary">{posts.length} posts</Badge>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-base font-semibold">Your Posts</h3>
+              <Badge variant="secondary" className="text-xs">{posts.length}</Badge>
             </div>
 
             {posts.length === 0 ? (
-              <Card className="p-12 text-center">
-                <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">No Posts Yet</h3>
-                <p className="text-muted-foreground mb-4">
+              <Card className="p-8 text-center">
+                <User className="h-10 w-10 mx-auto mb-2 text-muted-foreground opacity-50" />
+                <h3 className="text-sm font-semibold mb-1">No Posts Yet</h3>
+                <p className="text-xs text-muted-foreground mb-2">
                   You haven't created any posts yet
                 </p>
-                <Button onClick={() => navigate("/")}>
+                <Button onClick={() => navigate("/")} size="sm" className="h-7 text-xs">
                   Create Your First Post
                 </Button>
               </Card>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-2">
                 {posts.map((post) => (
                   <PostCard
                     key={post.id}
                     post={post}
                     currentUserId={profile.id}
+                    isMuted={isMuted}
+                    onMuteToggle={handleMuteToggle}
                     onPostDeleted={fetchUserPosts}
                   />
                 ))}
