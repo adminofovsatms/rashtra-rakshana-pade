@@ -17,7 +17,6 @@ interface Post {
     full_name: string | null;
     avatar_url: string | null;
   };
-  twitter_username: string | null;
 }
 
 interface Event {

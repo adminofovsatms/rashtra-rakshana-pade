@@ -1,5 +1,3 @@
-// ManageUsers.tsx - Mobile Responsive Version
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,7 +26,6 @@ const ManageUsers = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const delete_user = `${import.meta.env.VITE_BACKEND_URL}/api/delete-user`;
 
   useEffect(() => {
     checkPermissions();
@@ -56,6 +53,7 @@ const ManageUsers = () => {
 
     setCurrentUserId(user.id);
 
+    // Check if user has super_admin or executive role from user_roles table
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
@@ -65,6 +63,7 @@ const ManageUsers = () => {
     const isSuperAdmin = userRoles.includes("super_admin");
     const isExecutive = userRoles.includes("executive");
 
+    // Allow access to both super_admin and executive
     if (!isSuperAdmin && !isExecutive) {
       navigate("/");
       return;
@@ -83,15 +82,19 @@ const ManageUsers = () => {
     setFilteredUsers(data || []);
   };
 
+  // Check if current user can perform actions on target user
   const canManageUser = (targetUserRole: string, targetUserId: string): boolean => {
+    // Can't manage yourself
     if (targetUserId === currentUserId) {
       return false;
     }
 
+    // Super admin can manage anyone
     if (currentUserRole === "super_admin") {
       return true;
     }
 
+    // Executive can manage members and volunteers, but not other executives or super_admins
     if (currentUserRole === "executive") {
       return targetUserRole === "member" || targetUserRole === "volunteer";
     }
@@ -105,7 +108,6 @@ const ManageUsers = () => {
         title: "Permission Denied",
         description: "You don't have permission to manage this user",
         variant: "destructive",
-        duration: 1000
       });
       return;
     }
@@ -123,7 +125,6 @@ const ManageUsers = () => {
         description: currentStatus
           ? "User can now access the platform"
           : "User has been suspended from the platform",
-        duration: 1000
       });
 
       fetchUsers();
@@ -132,7 +133,6 @@ const ManageUsers = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
-        duration: 1000
       });
     }
   };
@@ -149,7 +149,6 @@ const ManageUsers = () => {
       toast({
         title: "User approved",
         description: "Executive account has been approved",
-        duration: 1000
       });
 
       fetchUsers();
@@ -158,7 +157,6 @@ const ManageUsers = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
-        duration: 1000
       });
     }
   };
@@ -169,29 +167,22 @@ const ManageUsers = () => {
         title: "Permission Denied",
         description: "You don't have permission to delete this user",
         variant: "destructive",
-        duration: 1000
       });
       return;
     }
+
+    if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
+      return;
+    }
+
     try {
-      const response = await fetch(delete_user, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: userId })
-      });
+      const { error } = await supabase.auth.admin.deleteUser(userId);
 
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to delete user');
-      }
+      if (error) throw error;
 
       toast({
         title: "User deleted",
         description: "User account has been permanently deleted",
-        duration: 1000
       });
 
       fetchUsers();
@@ -200,7 +191,6 @@ const ManageUsers = () => {
         title: "Error",
         description: error.message,
         variant: "destructive",
-        duration: 1000
       });
     }
   };
@@ -218,135 +208,112 @@ const ManageUsers = () => {
     }
   };
 
-  const handleViewProfile = (userId: string) => {
-    navigate(`/user/${userId}`, { state: { from: '/manage-users' } });
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
-      <header className="bg-card border-b shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 shrink-0" 
-              onClick={() => navigate("/")}
-            >
-              <ArrowLeft className="h-4 w-4" />
+      <header className="bg-card border-b shadow-sm">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-base sm:text-lg font-bold truncate">Manage Users</h1>
+            <h1 className="text-2xl font-bold">Manage Users</h1>
           </div>
-          <Badge variant="outline" className="text-xs shrink-0">
-            {currentUserRole === "super_admin" ? "Super Admin" : "Executive"}
+          <Badge variant="outline" className="text-sm">
+            {currentUserRole === "super_admin" ? "Super Admin" : "Executive"} Access
           </Badge>
         </div>
       </header>
 
-      <main className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-4xl">
-        <Card className="p-3 mb-3">
+      <main className="container mx-auto px-4 py-8">
+        <Card className="p-6 mb-6">
           <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Search className="h-5 w-5 text-muted-foreground" />
             <Input
-              placeholder="Search users..."
+              placeholder="Search by name, email, or role..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 h-9 text-sm"
+              className="flex-1"
             />
           </div>
         </Card>
 
+        {/* Permission Info Banner for Executives */}
         {currentUserRole === "executive" && (
-          <Card className="p-3 mb-3 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
-            <p className="text-xs sm:text-sm text-blue-900 dark:text-blue-100">
-              <strong>Executive Access:</strong> You can manage Members and Volunteers only.
+          <Card className="p-4 mb-6 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              <strong>Executive Access:</strong> You can manage Members and Volunteers only. 
+              Other Executives and Super Admins cannot be modified.
             </p>
           </Card>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {filteredUsers.map((user) => {
             const canManage = canManageUser(user.role, user.id);
             const isSelf = user.id === currentUserId;
-            const showApproveButton = user.role === "executive" && !user.is_approved && currentUserRole === "super_admin";
 
             return (
-              <Card key={user.id} className="p-3 sm:p-4 animate-fade-in">
-                {/* User Info Section */}
-                <div className="space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 
-                          className="font-semibold text-sm sm:text-base cursor-pointer hover:text-primary transition-colors truncate"
-                          onClick={() => !isSelf && handleViewProfile(user.id)}
-                        >
-                          {user.full_name || "Anonymous"}
-                          {isSelf && <span className="text-xs text-muted-foreground ml-1">(You)</span>}
-                        </h3>
-                        <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
-                          {user.role.replace("_", " ")}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex flex-wrap items-center gap-2">
-                        {user.is_suspended && (
-                          <Badge variant="destructive" className="text-xs">Suspended</Badge>
-                        )}
-                        {user.role === "executive" && !user.is_approved && (
-                          <Badge variant="outline" className="text-xs">Pending Approval</Badge>
-                        )}
-                      </div>
-
-                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Joined: {new Date(user.created_at).toLocaleDateString()}
-                      </p>
+              <Card key={user.id} className="p-6 animate-fade-in">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-semibold text-lg">
+                        {user.full_name || "Anonymous"}
+                        {isSelf && <span className="text-sm text-muted-foreground ml-2">(You)</span>}
+                      </h3>
+                      <Badge variant={getRoleBadgeVariant(user.role)}>
+                        {user.role.replace("_", " ")}
+                      </Badge>
+                      {user.is_suspended && (
+                        <Badge variant="destructive">Suspended</Badge>
+                      )}
+                      {user.role === "executive" && !user.is_approved && (
+                        <Badge variant="outline">Pending Approval</Badge>
+                      )}
                     </div>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Joined: {new Date(user.created_at).toLocaleDateString()}
+                    </p>
                   </div>
 
-                  {/* Action Buttons - Responsive Layout */}
-                  {(showApproveButton || canManage) && (
-                    <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
-                      {showApproveButton && (
-                        <Button
-                          onClick={() => handleApprove(user.id)}
-                          size="sm"
-                          variant="outline"
-                          className="w-full sm:w-auto h-9 text-xs sm:text-sm"
-                        >
-                          <CheckCircle className="h-3.5 w-3.5 sm:mr-1.5" />
-                          <span className="ml-1.5 sm:ml-0">Approve</span>
-                        </Button>
-                      )}
-                      
-                      {canManage && (
-                        <>
-                          <Button
-                            onClick={() => handleSuspend(user.id, user.is_suspended, user.role)}
-                            size="sm"
-                            variant={user.is_suspended ? "outline" : "destructive"}
-                            className="w-full sm:w-auto h-9 text-xs sm:text-sm"
-                          >
-                            <Ban className="h-3.5 w-3.5 sm:mr-1.5" />
-                            <span className="ml-1.5 sm:ml-0">
-                              {user.is_suspended ? "Unsuspend" : "Suspend"}
-                            </span>
-                          </Button>
+                  <div className="flex gap-2">
+                    {/* Approve button - only for executives needing approval */}
+                    {user.role === "executive" && !user.is_approved && currentUserRole === "super_admin" && (
+                      <Button
+                        onClick={() => handleApprove(user.id)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                    )}
+                    
+                    {/* Suspend button - only if user can be managed */}
+                    {canManage && (
+                      <Button
+                        onClick={() => handleSuspend(user.id, user.is_suspended, user.role)}
+                        size="sm"
+                        variant={user.is_suspended ? "outline" : "destructive"}
+                      >
+                        <Ban className="h-4 w-4 mr-1" />
+                        {user.is_suspended ? "Unsuspend" : "Suspend"}
+                      </Button>
+                    )}
 
-                          <Button
-                            onClick={() => handleDelete(user.id, user.role)}
-                            size="sm"
-                            variant="destructive"
-                            className="w-full sm:w-auto h-9 text-xs sm:text-sm"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 sm:mr-1.5" />
-                            <span className="ml-1.5 sm:ml-0">Delete</span>
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  )}
+                    {/* Delete button - only if user can be managed */}
+                    {canManage && (
+                      <Button
+                        onClick={() => handleDelete(user.id, user.role)}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </Card>
             );
@@ -354,7 +321,7 @@ const ManageUsers = () => {
 
           {filteredUsers.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
-              <p className="text-sm">No users found matching your search</p>
+              <p>No users found matching your search</p>
             </div>
           )}
         </div>

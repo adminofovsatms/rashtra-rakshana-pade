@@ -436,7 +436,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
               className="font-semibold cursor-pointer hover:underline"
               onClick={handleAvatarClick}
             >
-              {post.twitter_username ? `@${post.twitter_username}` :post.profiles.full_name || "Anonymous"}
+              {post.profiles.full_name || "Anonymous"}
             </span>
             <span className="text-muted-foreground">•</span>
             <span className="text-muted-foreground">

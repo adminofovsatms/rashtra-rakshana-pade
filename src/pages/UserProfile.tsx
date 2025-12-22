@@ -1,7 +1,5 @@
-// UserProfile.tsx - Modified version
-
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,7 +34,6 @@ interface Post {
 
 const UserProfile = () => {
   const { userId } = useParams<{ userId: string }>();
-  const location = useLocation();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,9 +45,6 @@ const UserProfile = () => {
   const [isMuted, setIsMuted] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Check if we came from manage-users page
-  const fromManageUsers = location.state?.from === '/manage-users';
 
   useEffect(() => {
     const savedMuteState = localStorage.getItem('videoMuted');
@@ -281,14 +275,6 @@ const UserProfile = () => {
     return role.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const handleBack = () => {
-    if (fromManageUsers) {
-      navigate('/manage-users');
-    } else {
-      navigate(-1);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -306,18 +292,13 @@ const UserProfile = () => {
       <header className="bg-card border-b sticky top-0 z-10 shadow-sm">
         <div className="container mx-auto px-2 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               {profile.full_name || "User Profile"}
             </h1>
           </div>
-          {fromManageUsers && (
-            <Badge variant="outline" className="text-xs">
-              From Manage Users
-            </Badge>
-          )}
         </div>
       </header>
 
