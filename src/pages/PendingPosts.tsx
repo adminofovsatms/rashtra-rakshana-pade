@@ -10,6 +10,7 @@ import { ArrowLeft, CheckCircle, RefreshCw, CheckCheck, XCircle } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import TweetCard from "@/components/TweetCard";
 
+
 interface LinkPreview {
   url: string;
   display_url: string;
@@ -42,6 +43,7 @@ const PendingPosts = () => {
   const [isMuted, setIsMuted] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const VITE_BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
   useEffect(() => {
     checkSuperAdmin();
@@ -103,57 +105,98 @@ const PendingPosts = () => {
     }
   };
 
-  const handleAccept = async (post: TwitterPost) => {
-    setProcessingId(post.twitter_unique_id);
+  // const handleAccept = async (post: TwitterPost) => {
+  //   setProcessingId(post.twitter_unique_id);
 
-    try {
-      const { error: updateError } = await (supabase as any)
-        .from("twitter_posts")
-        .update({ status: "accepted" })
-        .eq("twitter_unique_id", post.twitter_unique_id);
+  //   try {
+  //     const { error: updateError } = await (supabase as any)
+  //       .from("twitter_posts")
+  //       .update({ status: "accepted" })
+  //       .eq("twitter_unique_id", post.twitter_unique_id);
 
-      if (updateError) throw updateError;
+  //     if (updateError) throw updateError;
 
-      const postData = {
-        user_id: post.user_id,
-        content: post.content,
-        post_type: post.post_type,
-        media_url: post.media_url,
-        twitter_unique_id: post.twitter_unique_id,
-        twitter_username: post.twitter_username,
-        source: post.source,
-        location: post.location,
-        link_preview: post.link_preview,
-      };
+  //     const postData = {
+  //       user_id: post.user_id,
+  //       content: post.content,
+  //       post_type: post.post_type,
+  //       media_url: post.media_url,
+  //       twitter_unique_id: post.twitter_unique_id,
+  //       twitter_username: post.twitter_username,
+  //       source: post.source,
+  //       location: post.location,
+  //       link_preview: post.link_preview,
+  //     };
 
-      const { error: insertError } = await (supabase as any)
-        .from("posts")
-        .insert(postData);
+  //     const { error: insertError } = await (supabase as any)
+  //       .from("posts")
+  //       .insert(postData);
 
-      if (insertError) throw insertError;
+  //     if (insertError) throw insertError;
 
-      toast({
-        title: "Post Accepted",
-        description: "The post has been approved and published successfully.",
-        duration: 1000
-      });
+  //     toast({
+  //       title: "Post Accepted",
+  //       description: "The post has been approved and published successfully.",
+  //       duration: 1000
+  //     });
 
-      setPosts((prev) =>
-        prev.filter((p) => p.twitter_unique_id !== post.twitter_unique_id)
-      );
-    } catch (error: any) {
-      console.error("Error accepting post:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to accept the post.",
-        variant: "destructive",
-        duration: 1000
-      });
-    } finally {
-      setProcessingId(null);
+  //     setPosts((prev) =>
+  //       prev.filter((p) => p.twitter_unique_id !== post.twitter_unique_id)
+  //     );
+  //   } catch (error: any) {
+  //     console.error("Error accepting post:", error);
+  //     toast({
+  //       title: "Error",
+  //       description: error.message || "Failed to accept the post.",
+  //       variant: "destructive",
+  //       duration: 1000
+  //     });
+  //   } finally {
+  //     setProcessingId(null);
+  //   }
+  // };
+const handleAccept = async (post: TwitterPost) => {
+  setProcessingId(post.twitter_unique_id);
+
+  try {
+    // Call backend endpoint instead of direct Supabase operations
+    const response = await fetch(`${VITE_BACKEND_URL}/admin/accept-twitter-post`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        twitter_unique_id: post.twitter_unique_id
+      })
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error);
     }
-  };
 
+    toast({
+      title: "Post Accepted",
+      description: "The post has been approved and published successfully.",
+      duration: 1000
+    });
+
+    setPosts((prev) =>
+      prev.filter((p) => p.twitter_unique_id !== post.twitter_unique_id)
+    );
+  } catch (error: any) {
+    console.error("Error accepting post:", error);
+    toast({
+      title: "Error",
+      description: error.message || "Failed to accept the post.",
+      variant: "destructive",
+      duration: 1000
+    });
+  } finally {
+    setProcessingId(null);
+  }
+};
   const handleReject = async (post: TwitterPost) => {
     setProcessingId(post.twitter_unique_id);
 
