@@ -149,7 +149,9 @@ const TweetCard = ({ post, isMuted, onMuteToggle, onAccept, onReject, processing
       <div className="flex items-start gap-3 pt-3">
         <Avatar className="h-8 w-8">
           <AvatarFallback className="text-xs bg-blue-500/10">
-            <Twitter className="h-4 w-4 text-blue-500" />
+             {post.twitter_username
+                  ? post.twitter_username.charAt(0).toUpperCase()
+                  : "U"}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
