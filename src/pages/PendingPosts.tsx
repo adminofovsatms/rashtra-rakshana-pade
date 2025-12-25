@@ -230,69 +230,58 @@ const handleAccept = async (post: TwitterPost) => {
     }
   };
 
-  const handleAcceptAll = async () => {
-    if (posts.length === 0) return;
+ const handleAcceptAll = async () => {
+  if (posts.length === 0) return;
 
-    setBulkProcessing(true);
-    let successCount = 0;
-    let failCount = 0;
+  setBulkProcessing(true);
+  let successCount = 0;
+  let failCount = 0;
 
-    try {
-      for (const post of posts) {
-        try {
-          // Update status to accepted
-          const { error: updateError } = await (supabase as any)
-            .from("twitter_posts")
-            .update({ status: "accepted" })
-            .eq("twitter_unique_id", post.twitter_unique_id);
+  try {
+    for (const post of posts) {
+      try {
+        const response = await fetch(`${VITE_BACKEND_URL}/admin/accept-twitter-post`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            twitter_unique_id: post.twitter_unique_id
+          })
+        });
 
-          if (updateError) throw updateError;
+        const result = await response.json();
 
-          // Insert into posts table
-          const postData = {
-            user_id: post.user_id,
-            content: post.content,
-            post_type: post.post_type,
-            media_url: post.media_url,
-            twitter_unique_id: post.twitter_unique_id,
-            twitter_username: post.twitter_username,
-            source: post.source,
-            location: post.location,
-            link_preview: post.link_preview,
-          };
-
-          const { error: insertError } = await (supabase as any)
-            .from("posts")
-            .insert(postData);
-
-          if (insertError) throw insertError;
-
-          successCount++;
-        } catch (error) {
-          console.error(`Error accepting post ${post.twitter_unique_id}:`, error);
-          failCount++;
+        if (!result.success) {
+          throw new Error(result.error);
         }
+
+        successCount++;
+      } catch (error) {
+        console.error(`Error accepting post ${post.twitter_unique_id}:`, error);
+        failCount++;
       }
-
-      toast({
-        title: "Bulk Accept Complete",
-        description: `✅ ${successCount} accepted${failCount > 0 ? `, ❌ ${failCount} failed` : ''}`,
-        duration: 1000
-      });
-
-      // Refresh the list
-      fetchPendingPosts();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to accept all posts",
-        variant: "destructive",
-        duration: 1000
-      });
-    } finally {
-      setBulkProcessing(false);
     }
-  };
+
+    toast({
+      title: "Bulk Accept Complete",
+      description: `✅ ${successCount} accepted${failCount > 0 ? `, ❌ ${failCount} failed` : ''}`,
+      duration: 1000
+    });
+
+    // Refresh the list
+    fetchPendingPosts();
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.message || "Failed to accept all posts",
+      variant: "destructive",
+      duration: 1000
+    });
+  } finally {
+    setBulkProcessing(false);
+  }
+};
 
   const handleRejectAll = async () => {
     if (posts.length === 0) return;
