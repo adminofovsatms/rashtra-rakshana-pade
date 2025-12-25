@@ -7,8 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, User, Loader2 } from "lucide-react";
+import { ArrowLeft, User, Loader2, ShieldCheck } from "lucide-react";
 import PostCard from "@/components/PostCard";
 
 interface Profile {
@@ -46,6 +54,9 @@ const UserProfile = () => {
   const [followingCount, setFollowingCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isClaimable, setIsClaimable] = useState(false);
+  const [twitterUsername, setTwitterUsername] = useState<string | null>(null);
+  const [showClaimDialog, setShowClaimDialog] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -70,6 +81,7 @@ const UserProfile = () => {
       fetchUserProfile();
       fetchUserPosts();
       fetchFollowCounts();
+      checkIfClaimable();
     }
   }, [userId]);
 
@@ -87,6 +99,27 @@ const UserProfile = () => {
         navigate("/profile");
         return;
       }
+    }
+  };
+
+  const checkIfClaimable = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("twitter_id_map")
+        .select("claimed, username")
+        .eq("user_id", userId)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        throw error;
+      }
+
+      if (data && data.claimed === false) {
+        setIsClaimable(true);
+        setTwitterUsername(data.username);
+      }
+    } catch (error: any) {
+      console.error("Error checking claim status:", error);
     }
   };
 
@@ -369,7 +402,7 @@ const UserProfile = () => {
                 )}
 
                 {currentUserId && (
-                  <div className="mt-2 pt-2 border-t">
+                  <div className="mt-2 pt-2 border-t space-y-2">
                     {isFollowing ? (
                       <Button 
                         className="w-full h-8 text-xs" 
@@ -401,6 +434,17 @@ const UserProfile = () => {
                         ) : (
                           "Follow"
                         )}
+                      </Button>
+                    )}
+
+                    {isClaimable && (
+                      <Button
+                        className="w-full h-8 text-xs"
+                        variant="secondary"
+                        onClick={() => setShowClaimDialog(true)}
+                      >
+                        <ShieldCheck className="h-3 w-3 mr-1" />
+                        Claim Account as Mine
                       </Button>
                     )}
                   </div>
@@ -440,6 +484,40 @@ const UserProfile = () => {
           </div>
         </div>
       </main>
+
+      <Dialog open={showClaimDialog} onOpenChange={setShowClaimDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              Claim Your Account
+            </DialogTitle>
+            <DialogDescription className="text-sm space-y-3 pt-2">
+              <p>
+                If this is your account on X (formerly Twitter), please send a direct message to{" "}
+                <span className="font-semibold text-foreground">@dharmic_mandate</span> from your handle{" "}
+                {twitterUsername && (
+                  <span className="font-semibold text-foreground">@{twitterUsername}</span>
+                )}{" "}
+                for further verification instructions.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                You will receive instructions on how to verify and claim ownership of this account.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-start">
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => setShowClaimDialog(false)}
+              className="w-full"
+            >
+              OK, Got It
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

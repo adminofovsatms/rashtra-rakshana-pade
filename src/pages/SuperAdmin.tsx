@@ -26,7 +26,6 @@ const SuperAdmin = () => {
       return;
     }
 
-    // Check if user has super_admin role from user_roles table
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
@@ -58,7 +57,7 @@ const SuperAdmin = () => {
     setStats({
       totalUsers: userCount || 0,
       totalPosts: postCount || 0,
-      onlineUsers: 0, // Placeholder - would need realtime presence
+      onlineUsers: 0,
       postsToday: todayPostCount || 0
     });
   };
@@ -110,6 +109,9 @@ const SuperAdmin = () => {
           <div className="space-y-4">
             <Button onClick={() => navigate("/manage-users")} className="w-full">
               Manage All Users
+            </Button>
+            <Button onClick={() => navigate("/view-twitter-users")} variant="outline" className="w-full">
+              View Twitter Users
             </Button>
             <Button onClick={() => navigate("/pending-posts")} variant="outline" className="w-full">
               Review Pending Posts
