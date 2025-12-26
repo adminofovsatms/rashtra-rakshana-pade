@@ -36,6 +36,10 @@ interface Post {
   media_url: string | string[] | null;
   created_at: string;
   location?: string | null;
+  user_pinned?: boolean;
+  user_pinned_at?: string | null;
+  admin_pinned?: boolean;
+  admin_pinned_at?: string | null;
   profiles: {
     full_name: string | null;
     avatar_url: string | null;
@@ -170,6 +174,7 @@ const UserProfile = () => {
           )
         `)
         .eq("user_id", userId)
+        .order("user_pinned", { ascending: false })
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -477,6 +482,8 @@ const UserProfile = () => {
                     isMuted={isMuted}
                     onMuteToggle={handleMuteToggle}
                     onPostDeleted={fetchUserPosts}
+                    showUserPinButton={true}
+                    onPinToggle={fetchUserPosts}
                   />
                 ))}
               </div>

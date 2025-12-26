@@ -13,6 +13,7 @@ interface Post {
   post_type: string;
   media_url: string | null;
   created_at: string;
+  admin_pinned?: boolean;
   profiles: {
     full_name: string | null;
     avatar_url: string | null;
@@ -130,78 +131,91 @@ const PostFeed = ({ userId }: PostFeedProps) => {
   }, [hasMore, loadingMore, loading]);
 
   const fetchFeed = async (pageNum: number, reset: boolean = false) => {
-    try {
-      if (reset) {
-        setLoading(true);
-        setPage(0);
-      } else {
-        setLoadingMore(true);
-      }
-
-      const from = pageNum * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
-
-      const { data: postsData, error: postsError } = await supabase
-        .from("posts")
-        .select(`
-          *,
-          profiles (
-            full_name,
-            avatar_url
-          )
-        `)
-        .order("created_at", { ascending: false })
-        .range(from, to);
-      if (postsError) throw postsError;
-          
-      const { data: eventsData, error: eventsError } = await supabase
-        .from("events")
-        .select(`
-          *,
-          profiles (
-            full_name,
-            avatar_url
-          )
-        `)
-        .order("created_at", { ascending: false })
-        .range(from, to);
-
-      if (eventsError) throw eventsError;
-          
-      const combined: FeedItem[] = [
-        ...(postsData || []).map(post => ({ type: 'post' as const, data: post })),
-        ...(eventsData || []).map(event => ({ type: 'event' as const, data: event }))
-      ];
-
-      combined.sort((a, b) => 
-        new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
-      );
-
-      const pageItems = combined.slice(0, ITEMS_PER_PAGE);
-
-      if (reset) {
-        setFeedItems(pageItems);
-        setPage(1);
-      } else {
-        setFeedItems(prev => [...prev, ...pageItems]);
-        setPage(pageNum + 1);
-      }
-
-      setHasMore(pageItems.length === ITEMS_PER_PAGE);
-
-    } catch (error: any) {
-      toast({
-        title: "Error loading feed",
-        description: error.message,
-        variant: "destructive",
-        duration: 1000
-      });
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
+  try {
+    if (reset) {
+      setLoading(true);
+      setPage(0);
+    } else {
+      setLoadingMore(true);
     }
-  };
 
+    const from = pageNum * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE - 1;
+
+    const { data: postsData, error: postsError } = await supabase
+      .from("posts")
+      .select(`
+        *,
+        profiles (
+          full_name,
+          avatar_url
+        )
+      `)
+      .order("admin_pinned", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(from, to);
+    if (postsError) throw postsError;
+        
+    const { data: eventsData, error: eventsError } = await supabase
+      .from("events")
+      .select(`
+        *,
+        profiles (
+          full_name,
+          avatar_url
+        )
+      `)
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (eventsError) throw eventsError;
+        
+    const combined: FeedItem[] = [
+      ...(postsData || []).map(post => ({ type: 'post' as const, data: post })),
+      ...(eventsData || []).map(event => ({ type: 'event' as const, data: event }))
+    ];
+
+    combined.sort((a, b) => {
+      // Admin pinned posts always come first
+      if (a.type === 'post' && b.type === 'post') {
+        const aPost = a.data as Post;
+        const bPost = b.data as Post;
+        
+        if (aPost.admin_pinned && !bPost.admin_pinned) return -1;
+        if (!aPost.admin_pinned && bPost.admin_pinned) return 1;
+      }
+      
+      if (a.type === 'post' && (a.data as Post).admin_pinned) return -1;
+      if (b.type === 'post' && (b.data as Post).admin_pinned) return 1;
+      
+      // Otherwise sort by created_at
+      return new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime();
+    });
+
+    const pageItems = combined.slice(0, ITEMS_PER_PAGE);
+
+    if (reset) {
+      setFeedItems(pageItems);
+      setPage(1);
+    } else {
+      setFeedItems(prev => [...prev, ...pageItems]);
+      setPage(pageNum + 1);
+    }
+
+    setHasMore(pageItems.length === ITEMS_PER_PAGE);
+
+  } catch (error: any) {
+    toast({
+      title: "Error loading feed",
+      description: error.message,
+      variant: "destructive",
+      duration: 1000
+    });
+  } finally {
+    setLoading(false);
+    setLoadingMore(false);
+  }
+};
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
       fetchFeed(page);
@@ -234,15 +248,16 @@ const PostFeed = ({ userId }: PostFeedProps) => {
       {feedItems.map((item, index) => (
         <div key={item.type === 'post' ? `post-${item.data.id}` : `event-${item.data.id}`}>
           {item.type === 'post' ? (
-            <PostCard 
-              post={item.data} 
-              currentUserId={userId}
-              isMuted={isMuted}
-              onMuteToggle={handleMuteToggle}
-              onPostDeleted={() => {
-                setFeedItems(prev => prev.filter(f => f.type !== 'post' || f.data.id !== item.data.id));
-              }}
-      />) : ( 
+           <PostCard 
+            post={item.data} 
+            currentUserId={userId}
+            isMuted={isMuted}
+            onMuteToggle={handleMuteToggle}
+            onPostDeleted={() => {
+              setFeedItems(prev => prev.filter(f => f.type !== 'post' || f.data.id !== item.data.id));
+            }}
+            isFromFeed={true}
+/>) : ( 
             <EventCard
               event={item.data}
               currentUserId={userId}

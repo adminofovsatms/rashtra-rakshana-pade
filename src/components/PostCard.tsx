@@ -6,9 +6,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, MessageCircle, Share2, Trash2, ChevronLeft, ChevronRight, ExternalLink, Copy, Check } from "lucide-react";
+import { Heart, MessageCircle, Share2, Trash2, ChevronLeft, ChevronRight, ExternalLink, Copy, Check, Pin, PinOff } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import PostComments from "./PostComments";
+import { toggleUserPin, toggleAdminPin } from "./ui/pinHelper";
 
 interface LinkPreview {
   url: string;
@@ -30,6 +31,10 @@ interface PostCardProps {
     created_at: string;
     location?: string | null;
     link_preview?: LinkPreview | null;
+    user_pinned?: boolean;
+    user_pinned_at?: string | null;
+    admin_pinned?: boolean;
+    admin_pinned_at?: string | null;
     profiles: {
       full_name: string | null;
       avatar_url: string | null;
@@ -40,9 +45,25 @@ interface PostCardProps {
   onMuteToggle: (muted: boolean) => void;
   onPostDeleted?: () => void;
   isDetailView?: boolean;
+  showUserPinButton?: boolean;
+  showAdminPinButton?: boolean;
+  onPinToggle?: () => void;
+  isFromFeed?: boolean;
 }
 
-const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, isDetailView = false }: PostCardProps) => {
+const PostCard = ({ 
+  post, 
+  currentUserId, 
+  isMuted, 
+  onMuteToggle, 
+  onPostDeleted, 
+  isDetailView = false,
+  showUserPinButton = false,
+  showAdminPinButton = false,
+  onPinToggle,
+  isFromFeed = false  // ADD THIS LINE
+}
+: PostCardProps) => {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
@@ -52,6 +73,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [sharePopoverOpen, setSharePopoverOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -146,7 +168,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
       }
       return part;
     });
-  }
+  };
 
   const fetchCommentCount = async () => {
     const { data } = await supabase
@@ -261,6 +283,78 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
     }
   };
 
+  const handleUserPin = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!currentUserId || currentUserId !== post.user_id) return;
+
+    setPinLoading(true);
+
+    try {
+      const result = await toggleUserPin(post.id, currentUserId, post.user_pinned || false);
+      
+      if (!result.success) {
+        throw new Error(result.error || "Failed to toggle pin");
+      }
+
+      toast({
+        title: post.user_pinned ? "Post unpinned" : "Post pinned",
+        description: post.user_pinned 
+          ? "Post has been unpinned from your profile" 
+          : "Post has been pinned to your profile",
+        duration: 1000
+      });
+
+      onPinToggle?.();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+        duration: 1000
+      });
+    } finally {
+      setPinLoading(false);
+    }
+  };
+
+  const handleAdminPin = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!currentUserId) return;
+
+    setPinLoading(true);
+
+    try {
+      const result = await toggleAdminPin(post.id, post.admin_pinned || false);
+      
+      if (!result.success) {
+        throw new Error(result.error || "Failed to toggle admin pin");
+      }
+
+      toast({
+        title: post.admin_pinned ? "Post unpinned (Admin)" : "Post pinned (Admin)",
+        description: post.admin_pinned 
+          ? "Post has been unpinned by admin" 
+          : "Post has been pinned by admin",
+        duration: 1000
+      });
+
+      onPinToggle?.();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+        duration: 1000
+      });
+    } finally {
+      setPinLoading(false);
+    }
+  };
+
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -293,7 +387,6 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
         duration: 1000
       });
 
-
       onPostDeleted?.();
     } catch (error: any) {
       toast({
@@ -319,10 +412,7 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
         duration: 1000
       });
       
-      // Reset copied state after 2 seconds
       setTimeout(() => setLinkCopied(false), 2000);
-      
-      // Close popover after copying
       setTimeout(() => setSharePopoverOpen(false), 1000);
     } catch (error) {
       toast({
@@ -410,8 +500,11 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
     setCurrentMediaIndex(index);
   };
 
+  const isPinned = post.user_pinned || post.admin_pinned;
+
   return (
-    <Card className="px-3 animate-slide-up hover:shadow-md transition-shadow rounded-none">
+   <Card className="px-3 animate-slide-up hover:shadow-md transition-shadow rounded-none">
+
       <div className="flex items-start gap-3 pt-3">
         <div onClick={handleAvatarClick}>
           <Avatar className="h-8 w-8 hover:opacity-80 transition-opacity">
@@ -450,17 +543,61 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
             )}
           </div>
         </div>
-        {currentUserId === post.user_id && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleDelete}
-            className="text-destructive hover:text-destructive h-6 w-6 p-0"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
+
+        {/* Action buttons (pin and delete) */}
+        <div className="flex items-center gap-1">
+          {showUserPinButton && currentUserId === post.user_id && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleUserPin}
+              disabled={pinLoading}
+              className={`h-6 w-6 p-0 ${post.user_pinned ? 'text-primary' : 'text-muted-foreground'}`}
+              title={post.user_pinned ? "Unpin from profile" : "Pin to profile"}
+            >
+              {post.user_pinned ? (
+                <Pin className="h-3 w-3 fill-current" />
+              ) : (
+                <PinOff className="h-3 w-3" />
+              )}
+            </Button>
+          )}
+
+          {showAdminPinButton && currentUserId && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleAdminPin}
+              disabled={pinLoading}
+              className={`h-6 w-6 p-0 ${post.admin_pinned ? 'text-primary' : 'text-muted-foreground'}`}
+              title={post.admin_pinned ? "Unpin (Admin)" : "Pin (Admin)"}
+            >
+              {post.admin_pinned ? (
+                <Pin className="h-3 w-3 fill-current" />
+              ) : (
+                <PinOff className="h-3 w-3" />
+              )}
+            </Button>
+          )}
+                {isFromFeed && isPinned && (
+          <div className="h-6 w-6 p-0 flex items-center justify-center">
+            <Pin className="h-3 w-3 text-primary fill-current" />
+          </div>
         )}
+          {currentUserId === post.user_id && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              className="text-destructive hover:text-destructive h-6 w-6 p-0"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {post.content && (
@@ -541,46 +678,44 @@ const PostCard = ({ post, currentUserId, isMuted, onMuteToggle, onPostDeleted, i
         </div>
       )}
 
-      {post.link_preview && (
-        <a
-          href={post.link_preview.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block mb-2 border border-gray-200 rounded-xl overflow-hidden hover:bg-gray-50 transition-colors group"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {post.link_preview.image && (
-            <div className="relative w-full bg-gray-100">
-              <img
-                src={post.link_preview.image}
-                alt={post.link_preview.title}
-                className="w-full h-auto object-cover max-h-[400px]"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
-          )}
+{post.link_preview && (
+  <a
+    href={post.link_preview.url}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="block mb-2 border border-gray-200 rounded-xl overflow-hidden hover:bg-gray-50 transition-colors group"
+    onClick={(e) => e.stopPropagation()}
+  >
+    {post.link_preview.image && (
+      <div className="relative w-full bg-gray-100">
+        <img
+          src={post.link_preview.image}
+          alt={post.link_preview.title || 'link preview'}
+          className="w-full h-auto object-cover max-h-[400px]"
+          onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+            (e.currentTarget as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      </div>
+    )}
+    <div className="p-3">
+      <h3 className="font-semibold text-sm line-clamp-2 mb-1 group-hover:underline">
+        {post.link_preview.title}
+      </h3>
 
-          <div className="p-3">
-            <h3 className="font-semibold text-sm line-clamp-2 mb-1 group-hover:underline">
-              {post.link_preview.title}
-            </h3>
-
-            {post.link_preview.description && (
-              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                {post.link_preview.description}
-              </p>
-            )}
-
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <ExternalLink className="h-3 w-3" />
-              <span>{post.link_preview.domain}</span>
-            </div>
-          </div>
-        </a>
+      {post.link_preview.description && (
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+          {post.link_preview.description}
+        </p>
       )}
 
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <ExternalLink className="h-3 w-3" />
+        <span>{post.link_preview.domain}</span>
+      </div>
+    </div>
+  </a>
+)}
       {post.post_type === "poll" && pollOptions.length > 0 && (
         <div className="space-y-2 mb-2 pt-2" onClick={(e) => e.stopPropagation()}>
           {pollOptions.map((option) => {

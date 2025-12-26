@@ -46,6 +46,10 @@ interface Post {
   media_url: string | string[] | null;
   created_at: string;
   location?: string | null;
+  user_pinned?: boolean;
+  user_pinned_at?: string | null;
+  admin_pinned?: boolean;
+  admin_pinned_at?: string | null;
   profiles: {
     full_name: string | null;
     avatar_url: string | null;
@@ -84,6 +88,7 @@ const Profile = () => {
   const [followersLoading, setFollowersLoading] = useState(false);
   const [followingLoading, setFollowingLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);  
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -113,37 +118,59 @@ const Profile = () => {
   }, [profile?.id]);
 
   const fetchProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*, avatar_url, bio")
-        .eq("id", user.id)
-        .single();
-
-      if (error) throw error;
-
-      setProfile({
-        ...data,
-        email: user.email || ""
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-        duration: 1000
-      });
-    } finally {
-      setLoading(false);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      navigate("/auth");
+      return;
     }
-  };
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*, avatar_url, bio")
+      .eq("id", user.id)
+      .single();
+
+    if (error) throw error;
+
+    setProfile({
+      ...data,
+      email: user.email || ""
+    });
+
+    // Add this line to fetch roles after profile is set
+    fetchUserRoles(user.id);
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.message,
+      variant: "destructive",
+      duration: 1000
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
+const fetchUserRoles = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+
+    if (error) throw error;
+    
+    const roles = data?.map(r => r.role) || [];
+    if (roles.includes("super_admin")) {
+      setIsAdmin(true);
+    }
+  } catch (error) {
+    console.error("Error fetching roles:", error);
+    setIsAdmin(false);
+  }
+};
 
   const fetchUserPosts = async () => {
     try {
@@ -161,6 +188,7 @@ const Profile = () => {
           )
         `)
         .eq("user_id", user.id)
+        .order("user_pinned", { ascending: false })
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -1010,7 +1038,7 @@ const Profile = () => {
               </Card>
             ) : (
               <div className="space-y-2">
-                {posts.map((post) => (
+            {posts.map((post) => (
                   <PostCard
                     key={post.id}
                     post={post}
@@ -1018,6 +1046,9 @@ const Profile = () => {
                     isMuted={isMuted}
                     onMuteToggle={handleMuteToggle}
                     onPostDeleted={fetchUserPosts}
+                    showUserPinButton={!isAdmin}
+                    showAdminPinButton={isAdmin}
+                    onPinToggle={fetchUserPosts}
                   />
                 ))}
               </div>

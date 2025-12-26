@@ -216,7 +216,15 @@ const ViewTwitterUsers = () => {
                 <TableBody>
                   {filteredUsers.map((user) => (
                     <TableRow key={user.user_id}>
-                      <TableCell className="text-xs font-medium">{user.username}</TableCell>
+
+                      <TableCell className="text-xs font-medium">
+                        <span
+                          className="cursor-pointer hover:text-primary hover:underline transition-colors"
+                          onClick={() => navigate(`/user/${user.user_id}`)}
+                        >
+                          {user.username}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-xs">{user.email}</TableCell>
                       <TableCell className="text-xs font-mono">{user.pwd}</TableCell>
                       <TableCell className="text-center">
